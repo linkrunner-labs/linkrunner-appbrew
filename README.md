@@ -26,12 +26,36 @@ AnalyticsProvider → LinkrunnerTrackerV2      ← this package (pure TypeScript
 | [`@linkrunner/appbrew`](https://www.npmjs.com/package/@linkrunner/appbrew) | This package. `LinkrunnerTrackerV2 extends AnalyticsTrackerV2`. |
 | [`rn-linkrunner`](https://www.npmjs.com/package/rn-linkrunner) | Linkrunner React Native SDK. Native module. |
 
+## How it works
+
+`init()` is the first thing that runs, on **every app open** — not once per install. It registers the install, resolves attribution, and must complete before anything else: every other SDK call no-ops until it has.
+
+```
+app open
+  └─ init(token)                      registers the install, both platforms
+     ├─ setCustomerUserId(deviceId)   guests get a stable id immediately
+     ├─ getAttributionData()          deferred deep link, if any
+     └─ setPushToken()                uninstall tracking
+```
+
+You do not call `init()` yourself. The tracker runs it inside `initTracker`, which Appbrew invokes on launch via `AnalyticsProvider.trackersInit()`.
+
+**One `init()` covers both platforms.** Appbrew emits two separate install events, `app_install_android` and `app_install_ios`, but both are **dropped** — `init()` has already recorded the install natively, and forwarding them would double-count. They also fire off a JS-side `has-booted` flag exactly once per install, so they cannot be used to drive `init()` in the first place.
+
 ## Requirements
 
 - An Appbrew app (`@gauntlet/*` packages)
 - `rn-linkrunner` >= 3.0.0
 - iOS 15.0+, Android minSdk 24
-- A Linkrunner project token — [dashboard → Settings](https://dashboard.linkrunner.io/dashboard?s=members&m=documentation)
+- A Linkrunner project token
+
+### Getting the token
+
+**[dashboard.linkrunner.io → Settings](https://dashboard.linkrunner.io/dashboard?s=members&m=documentation)** — copy the project token for the store.
+
+Optional, only if you use [SDK signing](https://dashboard.linkrunner.io/settings?s=sdk-signing): `secretKey` and `keyId` from the same dashboard.
+
+The token is entered in the **Appbrew dashboard**, not in the app — see [step 5](#5-configure-in-the-appbrew-dashboard).
 
 ## Where everything goes
 
