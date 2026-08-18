@@ -1,6 +1,6 @@
 {
   "name": "@linkrunner/appbrew",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Linkrunner attribution for Appbrew apps \u2014 installs, in-app events, revenue, and deep links.",
   "license": "MIT",
   "author": "Linkrunner <support@linkrunner.io>",
@@ -40,7 +40,8 @@
     "@gauntlet/brewery": "*",
     "@gauntlet/local-storage": "*",
     "@gauntlet/state": "*",
-    "@gauntlet/types": "*"
+    "@gauntlet/types": "*",
+    "@react-native-firebase/messaging": "*"
   },
   "peerDependenciesMeta": {
     "@gauntlet/analytics": {
@@ -56,6 +57,9 @@
       "optional": true
     },
     "@gauntlet/types": {
+      "optional": true
+    },
+    "@react-native-firebase/messaging": {
       "optional": true
     }
   },
@@ -109,6 +113,11 @@
       {
         "key": "deeplinkRouting",
         "title": "Route Deferred Deep Links",
+        "required": false
+      },
+      {
+        "key": "uninstallTracking",
+        "title": "Uninstall Tracking",
         "required": false
       },
       {

@@ -9,6 +9,7 @@ import {
 import linkrunner, { type UserData } from 'rn-linkrunner'
 
 import { bootstrapDeepLinks } from './deeplinks'
+import { registerPushToken } from './push'
 import {
   DEFAULT_EVENTS_MAPPER,
   buildEventData,
@@ -202,6 +203,17 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
     }).catch((error) => {
       console.warn('[linkrunner/appbrew] deeplink bridge failed', error)
     })
+
+    // Also not awaited: getAPNSToken() can block on APNs registration, and no
+    // event depends on the result.
+    if (settings.uninstallTracking !== false) {
+      registerPushToken({
+        run: (label, fn) => this.run(label, fn),
+        debug: settings.debug,
+      }).catch((error) => {
+        console.warn('[linkrunner/appbrew] push token registration failed', error)
+      })
+    }
 
     this.backfillIdentity()
   }

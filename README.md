@@ -43,6 +43,7 @@ Read at runtime from `config.integrations.linkrunner`.
 | `enablePIIHashing` | no | Hash email/phone on-device before they leave the app. |
 | `trackScreenViews` | no | Forward `screen_view`. **Off by default** — highest-volume event by a wide margin. |
 | `deeplinkRouting` | no | Route resolved deferred deep links into the Appbrew router. Defaults to on. |
+| `uninstallTracking` | no | Register the device push token for uninstall measurement. Defaults to on; no-ops without `@react-native-firebase/messaging`. |
 | `enableRefunds` | no | Forward `refund` to `removePayment`. **Off by default** — see Refunds. |
 | `eventsMapper` / `paramsMapper` | no | Rename events/params before sending. |
 | `eventsWhitelist` / `paramsWhitelist` | no | Restrict what is forwarded. Defaults to everything. |
@@ -92,6 +93,29 @@ This matters because Appbrew's provider deduplicates purchases in an in-memory `
 Off by default, and never called without a payment id.
 
 `removePayment({ userId })` with no `paymentId` deletes **every** payment for that user. The two ids also come from different namespaces: purchases carry `transaction_id = cart.order.name || numericOrderId || cartId` (`getPurchaseInfo`), refunds carry `transaction_id = orderData.id` (`getOrderInfo`). Verify the mapping against a real store before enabling.
+
+## Uninstall tracking
+
+The device push token is registered automatically on init — the APNs token on
+iOS, the FCM token on Android — and re-sent whenever Android rotates it.
+`@react-native-firebase/messaging` is an optional peer; without it this quietly
+does nothing.
+
+Also configure **Settings → Uninstall Tracking** in the Linkrunner dashboard
+(Firebase Project ID for Android; APNs p8 key, Key ID, Bundle ID and Team ID for
+iOS). Without that the token is accepted but no uninstall is ever reported.
+
+Linkrunner detects uninstalls with a silent push, so ignore those pings in your
+FCM handler or they surface as visible notifications:
+
+```javascript
+messaging().onMessage(async (msg) => {
+  if (msg.data?.['lr-uninstall-tracking']) return
+  // ...
+})
+```
+
+Set `uninstallTracking: false` to disable.
 
 ## Deep links
 

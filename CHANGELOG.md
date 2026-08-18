@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.2
+
+Adds uninstall tracking (`setPushToken`), which the React Native SDK docs
+document but this package was not implementing — an audit gap, not a design
+decision. The APNs token on iOS and the FCM token on Android are registered on
+init and re-sent on Android's token refresh, since a stale token silently
+breaks uninstall attribution.
+
+`@react-native-firebase/messaging` is an optional peer, loaded lazily so an app
+without push degrades quietly instead of crashing. Appbrew apps normally ship
+it. Controlled by the new `uninstallTracking` setting, on by default.
+
 ## 0.1.1
 
 First working release. `0.1.0` was published from a different, untested copy of

@@ -31,6 +31,12 @@ export interface LinkrunnerIntegrationConfig {
   /** Route resolved deferred deep links into the Appbrew router. Defaults to on. */
   deeplinkRouting?: boolean
   /**
+   * Register the device push token so Linkrunner can measure uninstalls.
+   * Defaults to on; no-ops when `@react-native-firebase/messaging` is absent.
+   * Also needs Settings > Uninstall Tracking configured in the dashboard.
+   */
+  uninstallTracking?: boolean
+  /**
    * Forward `refund` to `removePayment`. Off by default: Appbrew's refund
    * payload carries a different id namespace than its purchase payload, so the
    * call would usually no-op. See the README before enabling.
