@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.5
+
+Documentation only, no code change.
+
+Adds a "How it works" section covering the init lifecycle, states that one
+init() covers both platforms and why Appbrew's separate app_install_android /
+app_install_ios events are dropped, and gives the direct dashboard URL for
+retrieving a project token.
+
 ## 0.1.3
 
 `signup` and `login` now both trigger Linkrunner's `signup()`, in addition to

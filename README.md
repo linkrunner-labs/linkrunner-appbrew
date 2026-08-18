@@ -51,11 +51,17 @@ You do not call `init()` yourself. The tracker runs it inside `initTracker`, whi
 
 ### Getting the token
 
-**[dashboard.linkrunner.io → Settings](https://dashboard.linkrunner.io/dashboard?s=members&m=documentation)** — copy the project token for the store.
+Copy the project token from your project's settings page in the Linkrunner dashboard:
 
-Optional, only if you use [SDK signing](https://dashboard.linkrunner.io/settings?s=sdk-signing): `secretKey` and `keyId` from the same dashboard.
+```
+https://dashboard.linkrunner.io/dashboard/settings/project-details?p_id=<PROJECT_ID>
+```
 
-The token is entered in the **Appbrew dashboard**, not in the app — see [step 5](#5-configure-in-the-appbrew-dashboard).
+Replace `<PROJECT_ID>` with your project's id — or open [dashboard.linkrunner.io](https://dashboard.linkrunner.io) and navigate to **Settings → Project Details**.
+
+Optional, only if you use [SDK signing](https://dashboard.linkrunner.io/settings?s=sdk-signing): `secretKey` and `keyId`, from the same dashboard.
+
+You **get** the token from Linkrunner but **enter** it in the Appbrew dashboard — see [step 5](#5-configure-in-the-appbrew-dashboard).
 
 ## Where everything goes
 
@@ -155,7 +161,7 @@ The resulting config the app receives:
 
 Only `token` is required; everything else has a default.
 
-Get the token from **[dashboard → Settings](https://dashboard.linkrunner.io/dashboard?s=members&m=documentation)**. If `secretKey` / `keyId` are used for [SDK signing](https://dashboard.linkrunner.io/settings?s=sdk-signing), they go in the same form.
+Get the token from `https://dashboard.linkrunner.io/dashboard/settings/project-details?p_id=<PROJECT_ID>` — see [Getting the token](#getting-the-token). If `secretKey` / `keyId` are used for [SDK signing](https://dashboard.linkrunner.io/settings?s=sdk-signing), they go in the same form.
 
 | Key | Required | Default | Purpose |
 | --- | --- | --- | --- |
