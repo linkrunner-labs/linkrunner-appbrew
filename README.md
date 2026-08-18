@@ -248,25 +248,128 @@ Off by default. Enable with `enableRefunds` only after verifying the id mapping 
 
 # Deep linking
 
-| | Source | Routed? |
-| --- | --- | --- |
-| **Direct** (user taps a link) | `Linking` → `handleDeeplink()` | No — Appbrew already routes it |
-| **Deferred** (first open after install) | `getAttributionData()` | Yes, into an empty slot only |
+Two distinct flows, handled deliberately differently.
 
-Deliberately asymmetric: a user-initiated link is authoritative, so touching the router would double-navigate. A deferred link is speculative and may only fill an empty slot — losing one is cheaper than hijacking an intentional tap. Deferred routing applies once per install.
+| | Trigger | SDK call | Routed into the app? |
+| --- | --- | --- | --- |
+| **Direct** | User taps a link with the app installed | `handleDeeplink(url)` | **No** — Appbrew already routes it |
+| **Deferred** | First open after installing from a link | `getAttributionData()` | **Yes**, into an empty slot only |
 
-Set `deeplinkRouting: false` to report links for attribution without routing.
+**Why asymmetric:** a user-initiated link is authoritative and Appbrew's own router is already handling it, so writing to the router again would double-navigate. A deferred link is speculative — it may only fill a slot nobody else claimed. Losing a deferred destination is far cheaper than hijacking an intentional tap.
+
+Deferred routing applies **once per install**: `getAttributionData()` returns the same URL on every cold start, so replaying it would hijack every launch.
+
+Set `deeplinkRouting: false` to report links for attribution without touching the router.
 
 ## Native configuration
 
-Store-specific and not supplied by this package:
+Store-specific, and not supplied by this package. Follow the [deep linking setup guide](https://docs.linkrunner.io/features/deep-linking-setup) — summary below.
 
-- **iOS** — add the tracking domain to Associated Domains (`applinks:link.yourstore.com`)
-- **Android** — an intent filter plus a hosted `assetlinks.json`
+### Host the verification files
 
-Host the verification files under **Project Settings → Domain Verification** in the dashboard; Linkrunner serves them from `/.well-known/`.
+In the dashboard under **Project Settings → Domain Verification**, paste both JSON objects. Linkrunner then serves them at:
 
-References: [Deep linking setup](https://docs.linkrunner.io/features/deep-linking-setup) · [handleDeeplink](https://docs.linkrunner.io/sdk/react-native#handle-deeplink) · [debugging domain verification](https://docs.linkrunner.io/features/deep-linking-setup#debugging-domain-verification)
+- `https://<your-domain>/.well-known/apple-app-site-association`
+- `https://<your-domain>/.well-known/assetlinks.json`
+
+**Android** — `assetlinks.json`:
+
+```json
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.yourstore.app",
+    "sha256_cert_fingerprints": ["AA:BB:CC:..."]
+  }
+}]
+```
+
+Get the fingerprint — debug and release keystores differ, so list both, or use the Play Console fingerprint (**Setup → App integrity**) if you use Play App Signing:
+
+```bash
+keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
+```
+
+**iOS** — `apple-app-site-association`:
+
+```json
+{ "applinks": { "apps": [], "details": [
+  { "appID": "TEAMID.com.yourstore.app", "paths": ["/*"] }
+]}}
+```
+
+### App configuration
+
+**Android** — in `AndroidManifest.xml`, inside `<activity>`:
+
+```xml
+<intent-filter android:autoVerify="true">
+  <action android:name="android.intent.action.VIEW" />
+  <category android:name="android.intent.category.DEFAULT" />
+  <category android:name="android.intent.category.BROWSABLE" />
+  <data android:scheme="https" android:host="link.yourstore.com" />
+</intent-filter>
+```
+
+**iOS** — Xcode → Signing & Capabilities → Associated Domains:
+
+```
+applinks:link.yourstore.com
+```
+
+A custom URI scheme (`yourstore://`) works as a fallback and needs no domain verification.
+
+## Testing
+
+```bash
+# Android
+adb shell am start -a android.intent.action.VIEW \
+  -d "https://link.yourstore.com/products/abc" com.yourstore.app
+
+# iOS simulator
+xcrun simctl openurl booted "https://link.yourstore.com/products/abc"
+```
+
+Typing a Universal Link into Safari never opens the app — tap it from another app, e.g. Notes.
+
+With `debug: true` the SDK logs the resolved destination:
+
+```
+handleDeeplink success: Deeplink processed
+handleDeeplink response > { deeplink: 'https://...', processing: true }
+```
+
+## When links open the browser instead of the app
+
+Almost always domain verification, not app code.
+
+**Android** — check the verification state (`verified` is good; `1024` / `legacy_failure` means a fingerprint or hosted-file problem):
+
+```bash
+adb shell pm get-app-links com.yourstore.app
+
+# force a re-check
+adb shell pm set-app-links --package com.yourstore.app 0 all
+adb shell pm verify-app-links --re-verify com.yourstore.app
+```
+
+**iOS** — devices fetch the AASA from Apple's CDN, not your domain, so a fresh file can still be stale:
+
+```bash
+curl -v https://app-site-association.cdn-apple.com/a/v1/link.yourstore.com
+```
+
+To bypass the CDN while testing, set the entitlement to `applinks:link.yourstore.com?mode=developer`, enable **Settings → Developer → Associated Domains Development**, then delete and reinstall the app. App Store builds ignore developer mode — verify with the normal entitlement before release.
+
+Full checklist: [debugging domain verification](https://docs.linkrunner.io/features/deep-linking-setup#debugging-domain-verification)
+
+## Reference
+
+- [Deep linking setup](https://docs.linkrunner.io/features/deep-linking-setup)
+- [Native configuration](https://docs.linkrunner.io/features/deep-linking-setup#step-3-update-native-configuration)
+- [`handleDeeplink`](https://docs.linkrunner.io/sdk/react-native#handle-deeplink)
+- [Remarketing / re-engagement](https://docs.linkrunner.io/features/remarketing)
 
 ---
 
