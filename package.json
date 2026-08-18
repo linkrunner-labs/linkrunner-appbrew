@@ -1,7 +1,7 @@
 {
   "name": "@linkrunner/appbrew",
   "version": "0.1.0",
-  "description": "Linkrunner attribution for Appbrew apps — installs, in-app events, revenue, and deep links.",
+  "description": "Linkrunner attribution for Appbrew apps \u2014 installs, in-app events, revenue, and deep links.",
   "license": "MIT",
   "author": "Linkrunner <support@linkrunner.io>",
   "homepage": "https://docs.linkrunner.io",
@@ -27,6 +27,12 @@
     "deep-linking",
     "react-native"
   ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "typecheck:ci": "tsc --noEmit -p tsconfig.ci.json"
+  },
   "peerDependencies": {
     "rn-linkrunner": ">=3.0.0",
     "react-native": "*",
@@ -36,8 +42,26 @@
     "@gauntlet/state": "*",
     "@gauntlet/types": "*"
   },
+  "peerDependenciesMeta": {
+    "@gauntlet/analytics": {
+      "optional": true
+    },
+    "@gauntlet/brewery": {
+      "optional": true
+    },
+    "@gauntlet/local-storage": {
+      "optional": true
+    },
+    "@gauntlet/state": {
+      "optional": true
+    },
+    "@gauntlet/types": {
+      "optional": true
+    }
+  },
   "devDependencies": {
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
   },
   "appbrew": {
     "configKey": "linkrunner",

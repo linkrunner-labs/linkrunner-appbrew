@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # The @gauntlet/* peers live on Appbrew's private registry and are marked
+      # optional in package.json, so they are simply absent here. Tests stub the
+      # one module they touch; the typecheck below is scoped accordingly.
+      - run: npm install --no-audit --no-fund
+
+      - run: npm test
+
+      - run: npm run typecheck:ci

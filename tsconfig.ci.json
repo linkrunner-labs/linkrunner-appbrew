@@ -1,0 +1,20 @@
+{
+  // CI-only typecheck.
+  //
+  // Full typechecking needs @gauntlet/analytics, @gauntlet/state and
+  // @gauntlet/local-storage, which live on Appbrew's private registry and are
+  // therefore absent in CI. Rather than stub them — which would typecheck
+  // against the stub rather than the real AnalyticsTrackerV2 and give false
+  // confidence — this config checks only the modules that do not depend on
+  // them, using the same @gauntlet/types stub the tests use.
+  //
+  // Run `npm run typecheck` locally, with the sample app's node_modules on
+  // disk, to check the remaining modules against the real types.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": { "@gauntlet/types": ["tests/stubs/gauntlet-types.ts"] },
+    "types": ["node"]
+  },
+  "include": ["src/events.ts", "src/utils.ts", "src/types.ts", "tests"]
+}
