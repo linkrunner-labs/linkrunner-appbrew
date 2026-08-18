@@ -153,6 +153,11 @@ describe('event classification', () => {
     ])
   })
 
+  it('drives signup() from both signup and login', () => {
+    expect(HANDLED_SEPARATELY).toContain('signup')
+    expect(HANDLED_SEPARATELY).toContain('login')
+  })
+
   it('handles purchase, refund, logout and installs outside trackEvent', () => {
     expect(HANDLED_SEPARATELY).toContain('purchase')
     expect(HANDLED_SEPARATELY).toContain('refund')

@@ -59,6 +59,7 @@ Exports `LinkrunnerTrackerV2` (`AnalyticsTrackerV2`) and `LinkrunnerTracker` as 
 | 21 live non-purchase events | `trackEvent(<name>, eventData)` |
 | `purchase` | `capturePayment()` |
 | `refund` | `removePayment()` — off by default |
+| `signup` / `login` | **both drive `signup()`** — and are also forwarded as events |
 | `logout` | resets identity to the device id |
 | `app_install_android` / `app_install_ios` | dropped — `init()` already records the install |
 | `screen_view` / `page_view` | `trackEvent`, off by default |
@@ -73,7 +74,9 @@ Sending an event is not enough to reach Meta. Map each event to its standard com
 
 ## Identity
 
-- `setCustomerUserId(<Appbrew instance id>)` runs at init, so guests always carry a stable id.
+- `init()` runs on **every app open**, inside `initTracker`. It registers the install and must land before anything else — every other SDK call no-ops until it does.
+- `setCustomerUserId(<Appbrew instance id>)` runs immediately after, so guests always carry a stable id.
+- **`signup` and `login` both call Linkrunner's `signup()`.** Neither Appbrew event carries a user object — that arrives separately via `setUserDetails` — so the user is read from the store. Both triggers run independently, because `setUserDetails` has no `fireImmediately` and can be missed on a launch where the user is already logged in.
 - On first identification, `signup()`; afterwards `setUserData()`. Tracked per `(install, user)` so re-login does not create a second signup, and a second user on the same device still gets their own.
 - `capturePayment.userId` resolves synchronously from the store at call time — the Shopify customer id when present, the device instance id otherwise.
 - `logout` resets identity to the device id.

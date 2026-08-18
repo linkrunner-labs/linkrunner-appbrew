@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.3
+
+`signup` and `login` now both trigger Linkrunner's `signup()`, in addition to
+being forwarded as ordinary events.
+
+Previously the identity lifecycle hung solely off Appbrew's `setUserDetails`
+channel. That channel works, but it is a single point of failure: its
+subscription has no `fireImmediately`, and `trackersInit()` runs seconds into
+the session, so a launch where the user is already logged in can miss it
+entirely. Registering the user is what ties subsequent events and revenue to
+them, so it is worth two independent triggers rather than one.
+
+Idempotent per (install, user), so the two paths cannot produce a duplicate
+signup.
+
 ## 0.1.2
 
 Adds uninstall tracking (`setPushToken`), which the React Native SDK docs

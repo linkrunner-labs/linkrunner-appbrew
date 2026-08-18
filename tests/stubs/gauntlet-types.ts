@@ -15,6 +15,8 @@ export const AnalyticsEvent = {
   PURCHASE: 'purchase',
   REFUND: 'refund',
   LOGOUT: 'logout',
+  SIGNUP: 'signup',
+  LOGIN: 'login',
   APP_INSTALL_ANDROID: 'app_install_android',
   APP_INSTALL_IOS: 'app_install_ios',
 } as const

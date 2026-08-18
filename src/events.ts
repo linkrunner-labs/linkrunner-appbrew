@@ -28,6 +28,10 @@ export const HANDLED_SEPARATELY: string[] = [
   AnalyticsEvent.PURCHASE,
   AnalyticsEvent.REFUND,
   AnalyticsEvent.LOGOUT,
+  // signup/login additionally drive linkrunner.signup(); they are still
+  // forwarded as ordinary events.
+  AnalyticsEvent.SIGNUP,
+  AnalyticsEvent.LOGIN,
   // `init()` records the install; app_install_* fires off a JS-side `has-booted`
   // flag exactly once per install and would only duplicate it.
   AnalyticsEvent.APP_INSTALL_ANDROID,

@@ -215,23 +215,26 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
       })
     }
 
-    this.backfillIdentity()
+    this.resolveIdentity()
   }
 
   /**
-   * `setUserDetails` may never fire on a launch where the user is already
-   * logged in.
+   * Resolves the logged-in user from the store and runs the identity lifecycle.
    *
-   * The subscription in `AnalyticsProviderV2.initEvents()` has no
+   * Called from three places: once during `initTracker`, and again on the
+   * `signup` / `login` events. `setUserDetails` may never fire on a launch where
+   * the user is already
+   *
+   * logged in: the subscription in `AnalyticsProviderV2.initEvents()` has no
    * `fireImmediately`, and `trackersInit()` runs seconds into the session —
    * after splash, the push dialog and ATT. `user.data.userDetails` usually
    * reaches `'idle'` well before that, and the selector then never changes
    * again, so the callback is never invoked for the whole launch.
    *
-   * Without this backfill, "call signup() on first setUserDetails" would have
-   * no reliable trigger for returning users.
+   * Safe to call repeatedly: `setUserDetails` short-circuits on an unchanged
+   * user, and `signup()` runs at most once per (install, user).
    */
-  private backfillIdentity() {
+  private resolveIdentity() {
     const user = this.readUserDetailsFromStore()
     if (user?.id) void this.setUserDetails(user)
   }
@@ -269,7 +272,7 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
    * Resolved synchronously at call time rather than tracked across the
    * `setUserDetails` channel.
    *
-   * That channel is debounced 1000ms and, per `backfillIdentity` above, may not
+   * That channel is debounced 1000ms and, per `resolveIdentity` above, may not
    * fire at all — so depending on it for `capturePayment.userId` would be
    * fragile. The zustand store already holds the id; the debounce only delays
    * our notification, not the data.
@@ -354,6 +357,23 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
       case AnalyticsEvent.APP_INSTALL_ANDROID:
       case AnalyticsEvent.APP_INSTALL_IOS:
         return
+
+      // Both map to Linkrunner's signup(), which registers the user and is what
+      // ties subsequent events and revenue to them.
+      //
+      // Neither event carries a user object — Appbrew delivers that separately
+      // through `setUserDetails`, debounced 1000ms with no ordering guarantee —
+      // so the user is read straight from the store instead. This is a second,
+      // independent trigger alongside that channel: `setUserDetails` has no
+      // `fireImmediately`, so relying on it alone leaves a single point of
+      // failure. `resolveIdentity` is idempotent per (install, user), so the two
+      // triggers cannot produce a duplicate signup.
+      //
+      // Both still fall through and forward as ordinary events as well.
+      case AnalyticsEvent.SIGNUP:
+      case AnalyticsEvent.LOGIN:
+        this.resolveIdentity()
+        break
 
       default:
         break
