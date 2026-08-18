@@ -69,18 +69,11 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
     super()
     this.overrides = options
 
-    // Must be set here, NOT in initTracker.
-    //
-    // AnalyticsProviderV2 checks `isEventWhiteListed(event, tracker.eventsWhitelist)`
-    // *before* it ever calls `tracker.send()`. Events that arrive while the
-    // whitelist is still the base class's empty array are dropped on the floor,
-    // not queued — the base class's backlog never sees them.
-    //
-    // There is real traffic in that window: `shell.tsx` calls
-    // `analytics.initEvents()` immediately before `analytics.trackersInit()`,
-    // and `initEvents()` fires `app_install_android`/`app_install_ios` on first
-    // boot. Appbrew's own FacebookTrackerV2 sets its whitelist inside
-    // `initTracker` and silently loses them.
+    // Must be set here, NOT in initTracker: AnalyticsProviderV2 checks
+    // eventsWhitelist *before* calling send(), so events arriving while it is
+    // still the base class's empty array are dropped, not queued. initEvents()
+    // fires app_install_* in exactly that window. Appbrew's own
+    // FacebookTrackerV2 sets its whitelist in initTracker and loses them.
     this.eventsWhitelist = DEFAULT_EVENTS_WHITELIST
     this.paramsWhitelist = DEFAULT_PARAMS_WHITELIST
     this.eventsMapper = { ...DEFAULT_EVENTS_MAPPER }
@@ -90,20 +83,16 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
   // ---------------------------------------------------------------- lifecycle
 
   /**
-   * `AnalyticsProviderV2.trackersInit()` reaches us from
-   * `@gauntlet/brewery/src/shell.tsx:238`, after: splash hides -> navigation
-   * ready -> `await getUserConsent()` -> `.finally()`.
+   * Called on every app open, from `@gauntlet/brewery/src/shell.tsx:238`, after:
+   * splash hides -> navigation ready -> `await getUserConsent()`.
    *
-   * `getUserConsent()` is the iOS ATT prompt, so IDFA is already granted or
-   * denied by the time we run. There is deliberately no ATT handling in this
-   * package — an AppsFlyer-style `timeToWaitForATTUserAuthorization` would be
-   * redundant here.
+   * `getUserConsent()` is the iOS ATT prompt, so IDFA is already resolved by the
+   * time we run — hence no ATT handling in this package.
    */
   async initTracker(config?: AppConfig): Promise<void> {
-    // The base class runs `initTracker(config).then(...)` with no `.catch`.
-    // A rejection would leave `initialized === false` forever, queueing every
-    // subsequent event into an array that is never drained. This must never
-    // reject, and must only ever run once.
+    // The base class calls this with no `.catch`; a rejection would leave
+    // `initialized === false` forever and queue every later event into an array
+    // that is never drained. Must never reject, must run once.
     if (this.initPromise) return this.initPromise
 
     this.initPromise = (async () => {
@@ -132,8 +121,8 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
 
     const token = nonEmptyString(settings.token)
     if (!token) {
-      // Stay disabled rather than letting every SDK call early-return with its
-      // own console.error. `enabled` makes each one a cheap no-op.
+      // `enabled` makes every later SDK call a cheap no-op, rather than each
+      // one early-returning with its own console.error.
       console.warn(
         '[linkrunner/appbrew] no token in config.integrations.linkrunner — tracker disabled'
       )
@@ -157,9 +146,8 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
     this.customerId =
       this.readCustomerIdFromStore() ?? trackerStorage.getCustomerId()
 
-    // Awaited: every other SDK method early-returns with a console.error when
-    // the token is unset, silently dropping the call with no queue to recover
-    // from. `initialized` must not flip until this lands.
+    // Awaited: every other SDK method silently no-ops until the token is set,
+    // with no queue to recover from.
     await withTimeout(
       Promise.resolve(
         linkrunner.init(
@@ -183,9 +171,8 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
       }
     }
 
-    // Awaited: `initialized = true` releases the whole queued backlog, and a
-    // queued purchase must not reach capturePayment before the SDK knows any
-    // user at all. One fast call on a path already gated behind splash + ATT.
+    // Awaited: `initialized = true` releases the queued backlog, and a queued
+    // purchase must not reach capturePayment before the SDK knows any user.
     await withTimeout(
       Promise.resolve(
         linkrunner.setCustomerUserId(this.customerId ?? this.instanceId)
@@ -194,8 +181,8 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
       'setCustomerUserId'
     )
 
-    // Not awaited: waits on native deferred-attribution resolution, which can
-    // take seconds. Nothing in the event path depends on the result.
+    // Not awaited: waits on native attribution resolution, which can take
+    // seconds. No event depends on the result.
     bootstrapDeepLinks({
       routing: this.settings.deeplinkRouting !== false,
       run: (label, fn) => this.run(label, fn),
@@ -204,8 +191,7 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
       console.warn('[linkrunner/appbrew] deeplink bridge failed', error)
     })
 
-    // Also not awaited: getAPNSToken() can block on APNs registration, and no
-    // event depends on the result.
+    // Not awaited: getAPNSToken() can block on APNs registration.
     if (settings.uninstallTracking !== false) {
       registerPushToken({
         run: (label, fn) => this.run(label, fn),
@@ -269,17 +255,12 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
   }
 
   /**
-   * Resolved synchronously at call time rather than tracked across the
-   * `setUserDetails` channel.
+   * Read synchronously from the store at call time. The `setUserDetails` channel
+   * is debounced and may not fire at all, so depending on it here would be
+   * fragile — the store already holds the id.
    *
-   * That channel is debounced 1000ms and, per `resolveIdentity` above, may not
-   * fire at all — so depending on it for `capturePayment.userId` would be
-   * fragile. The zustand store already holds the id; the debounce only delays
-   * our notification, not the data.
-   *
-   * Note this deliberately does not `await analytics.getCustomerId()`: its
-   * fallback branch makes a network round trip inside the event path and still
-   * returns null for guests.
+   * Deliberately not `await analytics.getCustomerId()`: its fallback makes a
+   * network round trip inside the event path and still returns null for guests.
    */
   private resolveUserId(): string {
     return (
@@ -315,8 +296,8 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
 
     const userData = this.toUserData(user, id)
 
-    // The subscription refires on any userDetails mutation — address edits,
-    // profile updates — so skip identical repeats within a session.
+    // The subscription refires on any userDetails mutation (address edits,
+    // profile updates), so skip identical repeats.
     const snapshot = JSON.stringify(userData)
     if (snapshot === this.lastUserSnapshot) return
     this.lastUserSnapshot = snapshot
@@ -358,18 +339,11 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
       case AnalyticsEvent.APP_INSTALL_IOS:
         return
 
-      // Both map to Linkrunner's signup(), which registers the user and is what
-      // ties subsequent events and revenue to them.
-      //
-      // Neither event carries a user object — Appbrew delivers that separately
-      // through `setUserDetails`, debounced 1000ms with no ordering guarantee —
-      // so the user is read straight from the store instead. This is a second,
-      // independent trigger alongside that channel: `setUserDetails` has no
-      // `fireImmediately`, so relying on it alone leaves a single point of
-      // failure. `resolveIdentity` is idempotent per (install, user), so the two
-      // triggers cannot produce a duplicate signup.
-      //
-      // Both still fall through and forward as ordinary events as well.
+      // Both drive signup(). Neither event carries a user object — Appbrew
+      // delivers that via setUserDetails — so identity is read from the store.
+      // A second trigger alongside that channel, which has no fireImmediately
+      // and can be missed. Idempotent per (install, user), so no duplicate
+      // signup. Both still forward as ordinary events.
       case AnalyticsEvent.SIGNUP:
       case AnalyticsEvent.LOGIN:
         this.resolveIdentity()
@@ -403,11 +377,10 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
   // ------------------------------------------------------------------ revenue
 
   private async handlePurchase(payload: AnalyticsPayload) {
-    // Linkrunner dedups idempotently on (type, payment_id), which is the only
-    // real protection here: Appbrew's provider dedups purchases in an in-memory
-    // Set that does not survive a process restart, so a kill/relaunch on the
-    // thank-you screen re-emits the event. Pass transaction_id verbatim — a
-    // uuid or timestamp would defeat the dedup entirely.
+    // Appbrew's provider dedups purchases in an in-memory Set that does not
+    // survive a process restart, so a kill/relaunch on the thank-you screen
+    // re-emits the event. Linkrunner's (type, payment_id) dedup is the only real
+    // protection — pass transaction_id verbatim; a uuid would defeat it.
     const paymentId = nonEmptyString(payload?.transaction_id)
     if (!paymentId) {
       console.warn(
@@ -467,9 +440,8 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
 
   private async handleLogout() {
     // `setUserDetails` only fires on `status === 'idle' && data`, so logout
-    // never reaches it. Without this, a guest purchase after logout would be
-    // attributed to the previous customer — permanently, since capturePayment
-    // is deduped and cannot be corrected after the fact.
+    // never reaches it. Without this a guest purchase after logout is attributed
+    // to the previous customer — permanently, since capturePayment is deduped.
     this.customerId = undefined
     this.lastUserSnapshot = undefined
     trackerStorage.clearCustomerId()
@@ -483,7 +455,7 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
 
   // ------------------------------------------------------------------ helpers
 
-  /** UTM params for the current session, as `@gauntlet/branch` attaches to every event. */
+  /** Session UTMs, as `@gauntlet/branch` attaches to every event. */
   private async eventSourceParams(): Promise<Record<string, any>> {
     try {
       const params = await useAppStore

@@ -2,21 +2,14 @@ import { Platform } from 'react-native'
 import linkrunner from 'rn-linkrunner'
 
 /**
- * Uninstall tracking.
+ * Uninstall tracking: Linkrunner sends a silent push and observes the failure,
+ * so it needs the device token — APNs on iOS, FCM on Android.
  *
- * Linkrunner detects uninstalls by sending a silent push to the device and
- * observing the failure, so it needs the device's push token: the APNs token on
- * iOS, the FCM token on Android.
+ * `@react-native-firebase/messaging` is an optional peer, required lazily so an
+ * app without push degrades quietly instead of crashing.
  *
- * `@react-native-firebase/messaging` is an optional peer. Appbrew apps normally
- * ship it (the sample app has 23.3.1, and `FirebasePush` is a first-class
- * module), but an app without push configured should degrade quietly rather
- * than crash — hence the lazy require instead of a top-level import.
- *
- * Also requires configuration in the Linkrunner dashboard under
- * Settings > Uninstall Tracking: Firebase Project ID for Android, and the APNs
- * p8 key / Key ID / Bundle ID / Team ID for iOS. Without that, the token is
- * accepted but no uninstall is ever reported.
+ * Also needs Settings > Uninstall Tracking configured in the dashboard, or the
+ * token is accepted but no uninstall is ever reported.
  */
 function loadMessaging(): any | undefined {
   try {
@@ -33,15 +26,7 @@ export interface PushTokenOptions {
   debug?: boolean
 }
 
-/**
- * Registers the push token and keeps it fresh.
- *
- * Never awaited by `initTracker`: `getAPNSToken()` can block until APNs
- * registration completes, which would hold up the queued-event backlog for
- * something no event depends on.
- *
- * Returns the token-refresh unsubscribe, or undefined when messaging is absent.
- */
+/** Returns the token-refresh unsubscribe, or undefined when messaging is absent. */
 export async function registerPushToken(
   options: PushTokenOptions
 ): Promise<(() => void) | undefined> {
@@ -63,8 +48,8 @@ export async function registerPushToken(
   }
 
   try {
-    // iOS wants the APNs token specifically; getToken() there returns the FCM
-    // token, which Linkrunner cannot use to reach APNs.
+    // iOS needs the APNs token; getToken() returns an FCM token there, which
+    // cannot reach APNs.
     const token =
       Platform.OS === 'ios'
         ? await messaging().getAPNSToken()
@@ -75,8 +60,8 @@ export async function registerPushToken(
   }
 
   try {
-    // Android rotates FCM tokens; a stale token silently breaks uninstall
-    // attribution, so re-send on every refresh.
+    // Android rotates FCM tokens; a stale one silently breaks uninstall
+    // attribution.
     return messaging().onTokenRefresh((token: string) => send(token))
   } catch {
     return undefined

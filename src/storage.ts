@@ -1,32 +1,24 @@
 import { LocalStorage } from '@gauntlet/local-storage'
 
 /**
- * MMKV-backed, synchronous, and scoped to the install — the same store Appbrew
- * uses for its own `has-booted` flag. Exactly the lifetime `signup()` wants.
+ * MMKV-backed and scoped to the install — the lifetime `signup()` wants.
  *
- * Caveat worth knowing: on iOS this lives in the app container, so it survives
- * relaunch and dies on delete-and-reinstall, but an iCloud/iTunes device
- * restore can bring it back. In that case we skip a `signup()` on a device
- * Linkrunner considers a fresh install. Acceptable — the alternative is a
- * duplicate signup on every restore.
+ * On iOS an iCloud/iTunes restore can bring these back, so a restored device
+ * skips a `signup()` Linkrunner would consider due. Preferred over a duplicate
+ * signup on every restore.
  */
 const KEYS = {
   /**
-   * The customer id we have already called `signup()` for.
-   *
-   * Deliberately the id and not a boolean: user A signs up, logs out, user B
-   * logs in on the same device — with a boolean, B would never get a `signup()`
-   * at all. Comparing ids gives "once per (install, user)" at the same cost.
+   * The customer id we have already called `signup()` for. Deliberately the id
+   * and not a boolean: with a boolean, a second user on the same device would
+   * never get their own signup.
    */
   SIGNED_UP_USER_ID: 'lr:signed-up-user-id',
-  /** Last known customer id, so a relaunch can set identity before the store hydrates. */
+  /** Lets a relaunch set identity before the store hydrates. */
   CUSTOMER_ID: 'lr:customer-id',
   /**
-   * Deferred deep link already handled.
-   *
-   * `getAttributionData()` will hand back the same deferred URL on every cold
-   * start. Without this flag we would re-navigate the user to the campaign
-   * landing page forever.
+   * `getAttributionData()` returns the same deferred URL on every cold start;
+   * without this flag we would re-navigate to the campaign landing page forever.
    */
   DEFERRED_CONSUMED: 'lr:deferred-consumed',
 } as const
