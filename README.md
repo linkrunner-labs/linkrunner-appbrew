@@ -107,11 +107,36 @@ Nothing to configure. Appbrew presents the iOS ATT prompt itself in `@gauntlet/b
 
 ## Native dependencies
 
-Peer-depends on `rn-linkrunner` (native module: `io.linkrunner:android-sdk` on Android, `LinkrunnerKit` on iOS, minimum iOS 15.0).
+Peer-depends on `rn-linkrunner` (native module: `io.linkrunner:android-sdk` on Android, `LinkrunnerKit` on iOS, minimum iOS 15.0). Adding it requires a new binary build.
 
-- **iOS** — `NSUserTrackingUsageDescription`, AdServices framework, Associated Domains entitlement, custom URL scheme, SKAdNetwork entries
-- **Android** — `com.google.android.gms.permission.AD_ID`, Play Install Referrer, deep link intent filters, hosted `assetlinks.json`
-- Bundle id / package name registered on the Linkrunner dashboard
+### Handled for you
+
+The Android SDK declares its own permissions (`INTERNET`, `ACCESS_NETWORK_STATE`, `com.google.android.gms.permission.AD_ID`) and a `<queries>` block, all merged in by Gradle's manifest merger. Play Install Referrer, `play-services-ads-identifier`, `play-services-appset` and WorkManager arrive as transitive dependencies. **None of these need adding by hand.**
+
+### Android — required
+
+Exclude the SDK's SharedPreferences from Android auto-backup. Without this the install ID is restored on reinstall, so a genuine reinstall looks like an existing install and reinstall detection breaks.
+
+```xml
+<application
+  android:dataExtractionRules="@xml/linkrunner_backup_rules"      <!-- API 31+ -->
+  android:fullBackupContent="@xml/linkrunner_backup_descriptor">  <!-- API 23-30 -->
+```
+
+Both resources ship inside `rn-linkrunner` and merge in as library resources. If the app already has its own backup configuration, merge the exclusion (`domain="sharedpref" path="io.linkrunner.sdk_prefs"`) into it instead.
+
+### Android — required for deep links
+
+An intent filter for the Linkrunner tracking domain, plus a hosted `assetlinks.json` for HTTPS App Links. App-specific, not supplied by the SDK.
+
+### iOS
+
+- `pod install` after adding the dependency
+- `NSUserTrackingUsageDescription` in `Info.plist` — usually already present in an Appbrew app, since Appbrew presents the ATT prompt itself
+- Associated Domains entitlement and a custom URL scheme, for deep links
+- SKAdNetwork endpoints (`NSAdvertisingAttributionReportEndpoint`, `AttributionCopyEndpoint`) — optional, only for SKAN attribution
+
+Bundle id / package name must be registered on the Linkrunner dashboard.
 
 ## Known limitations
 
