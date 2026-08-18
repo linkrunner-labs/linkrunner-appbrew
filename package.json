@@ -1,0 +1,117 @@
+{
+  "name": "@linkrunner/appbrew",
+  "version": "0.1.0",
+  "description": "Linkrunner attribution for Appbrew apps — installs, in-app events, revenue, and deep links.",
+  "license": "MIT",
+  "author": "Linkrunner <support@linkrunner.io>",
+  "homepage": "https://docs.linkrunner.io",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/linkrunner/linkrunner-appbrew.git"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "keywords": [
+    "appbrew-integration",
+    "linkrunner",
+    "attribution",
+    "mmp",
+    "deep-linking",
+    "react-native"
+  ],
+  "peerDependencies": {
+    "rn-linkrunner": ">=3.0.0",
+    "react-native": "*",
+    "@gauntlet/analytics": "*",
+    "@gauntlet/brewery": "*",
+    "@gauntlet/local-storage": "*",
+    "@gauntlet/state": "*",
+    "@gauntlet/types": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  },
+  "appbrew": {
+    "configKey": "linkrunner",
+    "requiresNativeBuild": true,
+    "settings": [
+      {
+        "key": "token",
+        "title": "Project Token",
+        "placeholder": "token",
+        "secret": true
+      },
+      {
+        "key": "secretKey",
+        "title": "Secret Key",
+        "placeholder": "secretKey",
+        "secret": true,
+        "required": false
+      },
+      {
+        "key": "keyId",
+        "title": "Key ID",
+        "placeholder": "keyId",
+        "required": false
+      },
+      {
+        "key": "debug",
+        "title": "Debug Logging",
+        "required": false
+      },
+      {
+        "key": "disableIdfa",
+        "title": "Disable IDFA (iOS)",
+        "required": false
+      },
+      {
+        "key": "enablePIIHashing",
+        "title": "Hash PII Before Sending",
+        "required": false
+      },
+      {
+        "key": "trackScreenViews",
+        "title": "Forward Screen Views",
+        "required": false
+      },
+      {
+        "key": "deeplinkRouting",
+        "title": "Route Deferred Deep Links",
+        "required": false
+      },
+      {
+        "key": "enableRefunds",
+        "title": "Forward Refunds (see README)",
+        "required": false
+      },
+      {
+        "key": "eventsMapper",
+        "title": "Events Mapper",
+        "required": false
+      },
+      {
+        "key": "paramsMapper",
+        "title": "Params Mapper",
+        "required": false
+      },
+      {
+        "key": "eventsWhitelist",
+        "title": "Events Whitelist",
+        "required": false
+      },
+      {
+        "key": "paramsWhitelist",
+        "title": "Params Whitelist",
+        "required": false
+      }
+    ]
+  }
+}
