@@ -33,6 +33,21 @@ AnalyticsProvider → LinkrunnerTrackerV2      ← this package (pure TypeScript
 - iOS 15.0+, Android minSdk 24
 - A Linkrunner project token — [dashboard → Settings](https://dashboard.linkrunner.io/dashboard?s=members&m=documentation)
 
+## Where everything goes
+
+| What | Where | Who does it |
+| --- | --- | --- |
+| **Project token** | Appbrew dashboard → integration settings → `linkrunner` | **Appbrew team**, per store |
+| Tracker registration | `src/app/App.tsx` — one line | App developer, once |
+| Backup rules | `android/app/src/main/AndroidManifest.xml` | App developer, once |
+| Pods | `cd ios && pod install` | App developer, once |
+| Deep link domain | Associated Domains (iOS) + intent filter (Android) | App developer, per store domain |
+| Domain verification files | Linkrunner dashboard → Project Settings → Domain Verification | Merchant / Linkrunner |
+| Event → Meta mapping | Linkrunner dashboard → Meta Ads → Event Mapping | Merchant / Linkrunner |
+| Uninstall tracking keys | Linkrunner dashboard → Settings → Uninstall Tracking | Merchant / Linkrunner |
+
+**The token never goes in code, `.env`, or a config file that ships.** It is set per store in the Appbrew dashboard and delivered at runtime.
+
 ---
 
 # Getting started
@@ -96,7 +111,27 @@ No token in code — see below.
 
 ## 5. Configure in the Appbrew dashboard
 
-The token is entered per store by the Appbrew team, arrives in the app config at `config.integrations.linkrunner`, and the tracker reads it on launch. The `appbrew.settings` manifest in this package's `package.json` generates that form.
+**This is where the token goes.** The Appbrew team enters it per store; it arrives in the app config at `config.integrations.linkrunner`, and the tracker reads it on launch. The `appbrew.settings` manifest in this package's `package.json` generates that form automatically — no schema to write.
+
+The resulting config the app receives:
+
+```json
+{
+  "integrations": {
+    "linkrunner": {
+      "token": "your-project-token",
+      "debug": false,
+      "trackScreenViews": false,
+      "deeplinkRouting": true,
+      "uninstallTracking": true
+    }
+  }
+}
+```
+
+Only `token` is required; everything else has a default.
+
+Get the token from **[dashboard → Settings](https://dashboard.linkrunner.io/dashboard?s=members&m=documentation)**. If `secretKey` / `keyId` are used for [SDK signing](https://dashboard.linkrunner.io/settings?s=sdk-signing), they go in the same form.
 
 | Key | Required | Default | Purpose |
 | --- | --- | --- | --- |
@@ -247,6 +282,8 @@ Off by default. Enable with `enableRefunds` only after verifying the id mapping 
 ---
 
 # Deep linking
+
+Both direct and deferred deep linking are supported.
 
 Two distinct flows, handled deliberately differently.
 
