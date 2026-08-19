@@ -1,6 +1,6 @@
 {
   "name": "@linkrunner/appbrew",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Linkrunner attribution for Appbrew apps \u2014 installs, in-app events, revenue, and deep links.",
   "license": "MIT",
   "author": "Linkrunner <support@linkrunner.io>",
@@ -73,77 +73,92 @@
     "settings": [
       {
         "key": "token",
-        "title": "Project Token",
+        "title": "Linkrunner Project Token",
         "placeholder": "token",
-        "secret": true
+        "secret": true,
+        "type": "text",
+        "required": true
       },
       {
         "key": "secretKey",
-        "title": "Secret Key",
+        "title": "Secret Key (SDK signing)",
         "placeholder": "secretKey",
         "secret": true,
-        "required": false
+        "required": false,
+        "type": "text"
       },
       {
         "key": "keyId",
-        "title": "Key ID",
+        "title": "Key ID (SDK signing)",
         "placeholder": "keyId",
-        "required": false
+        "required": false,
+        "type": "text"
       },
       {
         "key": "debug",
         "title": "Debug Logging",
-        "required": false
+        "required": false,
+        "type": "boolean"
       },
       {
         "key": "disableIdfa",
         "title": "Disable IDFA (iOS)",
-        "required": false
+        "required": false,
+        "type": "boolean"
       },
       {
         "key": "enablePIIHashing",
         "title": "Hash PII Before Sending",
-        "required": false
+        "required": false,
+        "type": "boolean"
       },
       {
         "key": "trackScreenViews",
-        "title": "Forward Screen Views",
-        "required": false
+        "title": "Forward Screen View Events",
+        "required": false,
+        "type": "boolean"
       },
       {
         "key": "deeplinkRouting",
         "title": "Route Deferred Deep Links",
-        "required": false
+        "required": false,
+        "type": "boolean"
       },
       {
         "key": "uninstallTracking",
         "title": "Uninstall Tracking",
-        "required": false
+        "required": false,
+        "type": "boolean"
       },
       {
         "key": "enableRefunds",
-        "title": "Forward Refunds (see README)",
-        "required": false
+        "title": "Forward Refunds",
+        "required": false,
+        "type": "boolean"
       },
       {
         "key": "eventsMapper",
-        "title": "Events Mapper",
-        "required": false
+        "title": "Events Mapper (JSON)",
+        "required": false,
+        "type": "text"
       },
       {
         "key": "paramsMapper",
-        "title": "Params Mapper",
-        "required": false
+        "title": "Params Mapper (JSON)",
+        "required": false,
+        "type": "text"
       },
       {
         "key": "eventsWhitelist",
-        "title": "Events Whitelist",
-        "required": false
+        "title": "Events Whitelist (JSON array)",
+        "required": false,
+        "type": "text"
       },
       {
         "key": "paramsWhitelist",
-        "title": "Params Whitelist",
-        "required": false
+        "title": "Params Whitelist (JSON array)",
+        "required": false,
+        "type": "text"
       }
     ]
   }

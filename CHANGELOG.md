@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.6
+
+Corrects the `appbrew.settings` manifest so Appbrew's dashboard renders the
+right control per setting.
+
+Seven boolean flags — debug, disableIdfa, enablePIIHashing, trackScreenViews,
+deeplinkRouting, uninstallTracking, enableRefunds — carried no `type`, so the
+form would have rendered them as free text. A merchant typing "true" would have
+set a string where the tracker expects a boolean.
+
+Also marks `token` as the only required setting, flags `secretKey` as secret
+alongside `token`, and clarifies the labels for the JSON-valued mapper and
+whitelist fields.
+
 ## 0.1.5
 
 Documentation only, no code change.
