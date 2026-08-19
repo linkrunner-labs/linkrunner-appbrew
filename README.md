@@ -163,20 +163,28 @@ Only `token` is required; everything else has a default.
 
 Get the token from `https://dashboard.linkrunner.io/dashboard/settings/project-details?p_id=<PROJECT_ID>` — see [Getting the token](#getting-the-token). If `secretKey` / `keyId` are used for [SDK signing](https://dashboard.linkrunner.io/settings?s=sdk-signing), they go in the same form.
 
-| Key | Required | Default | Purpose |
-| --- | --- | --- | --- |
-| `token` | **yes** | — | Linkrunner project token. Without it the tracker stays disabled. |
-| `secretKey` | no | — | Signing secret, paired with `keyId`. [SDK signing](https://dashboard.linkrunner.io/settings?s=sdk-signing) |
-| `keyId` | no | — | Key id, paired with `secretKey`. |
-| `debug` | no | `false` | Verbose SDK logging. |
-| `disableIdfa` | no | `false` | Opt out of IDFA even when ATT was granted. |
-| `enablePIIHashing` | no | `false` | Hash email/phone on-device before they leave. |
-| `trackScreenViews` | no | `false` | Forward `screen_view` / `page_view`. Off — highest-volume events by a wide margin. |
-| `deeplinkRouting` | no | `true` | Route resolved deferred deep links into the Appbrew router. |
-| `uninstallTracking` | no | `true` | Register the push token for uninstall measurement. |
-| `enableRefunds` | no | `false` | Forward `refund` to `removePayment`. See [Refunds](#refunds). |
-| `eventsMapper` / `paramsMapper` | no | `{}` | Rename events / params before sending. |
-| `eventsWhitelist` / `paramsWhitelist` | no | all | Restrict what is forwarded. |
+| Key | Type | Required | Secret | Default | Purpose |
+| --- | --- | --- | --- | --- | --- |
+| `token` | text | **yes** | **yes** | — | Linkrunner project token. Without it the tracker stays disabled. |
+| `secretKey` | text | no | **yes** | — | Signing secret, paired with `keyId`. [SDK signing](https://dashboard.linkrunner.io/settings?s=sdk-signing) |
+| `keyId` | text | no | no | — | Key id, paired with `secretKey`. |
+| `debug` | boolean | no | no | `false` | Verbose SDK logging. |
+| `disableIdfa` | boolean | no | no | `false` | Opt out of IDFA even when ATT was granted. |
+| `enablePIIHashing` | boolean | no | no | `false` | Hash email/phone on-device before they leave. |
+| `trackScreenViews` | boolean | no | no | `false` | Forward `screen_view` / `page_view`. Off — highest-volume events by a wide margin. |
+| `deeplinkRouting` | boolean | no | no | `true` | Route resolved deferred deep links into the Appbrew router. |
+| `uninstallTracking` | boolean | no | no | `true` | Register the push token for uninstall measurement. |
+| `enableRefunds` | boolean | no | no | `false` | Forward `refund` to `removePayment`. See [Refunds](#refunds). |
+| `eventsMapper` | text (JSON) | no | no | `{}` | Rename events before sending. |
+| `paramsMapper` | text (JSON) | no | no | `{}` | Rename params before sending. |
+| `eventsWhitelist` | text (JSON array) | no | no | all | Restrict which events are forwarded. |
+| `paramsWhitelist` | text (JSON array) | no | no | all | Restrict which params are forwarded. |
+
+`configKey: linkrunner` · `requiresNativeBuild: true` · **`token` is the only required setting.**
+
+`type`, `required` and `secret` come straight from the `appbrew.settings` manifest in this package's `package.json` — that is what generates the merchant-facing form, so the booleans render as toggles rather than free-text fields.
+
+The four JSON-valued settings are declared as `text`; paste a JSON object or array. These are advanced tuning rather than merchant settings, and can be hidden from the form if preferred.
 
 ### Local development
 
