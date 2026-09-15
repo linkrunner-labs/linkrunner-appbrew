@@ -1,6 +1,8 @@
 import { Platform } from 'react-native'
 import linkrunner from 'rn-linkrunner'
 
+import { tryRequire } from './utils'
+
 /**
  * Uninstall tracking: Linkrunner sends a silent push and observes the failure,
  * so it needs the device token — APNs on iOS, FCM on Android.
@@ -12,13 +14,8 @@ import linkrunner from 'rn-linkrunner'
  * token is accepted but no uninstall is ever reported.
  */
 function loadMessaging(): any | undefined {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const mod = require('@react-native-firebase/messaging')
-    return mod?.default ?? mod
-  } catch {
-    return undefined
-  }
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  return tryRequire(() => require('@react-native-firebase/messaging'))
 }
 
 export interface PushTokenOptions {

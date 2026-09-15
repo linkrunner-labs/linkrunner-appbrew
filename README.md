@@ -32,10 +32,12 @@ AnalyticsProvider → LinkrunnerTrackerV2      ← this package (pure TypeScript
 
 ```
 app open
+  ├─ setConsent()                     Google Ads consent, if configured
   └─ init(token)                      registers the install, both platforms
      ├─ setCustomerUserId(deviceId)   guests get a stable id immediately
      ├─ getAttributionData()          deferred deep link, if any
-     └─ setPushToken()                uninstall tracking
+     ├─ setPushToken()                uninstall tracking
+     └─ setAdditionalData()           CleverTap id, if the module is present
 ```
 
 You do not call `init()` yourself. The tracker runs it inside `initTracker`, which Appbrew invokes on launch via `AnalyticsProvider.trackersInit()`.
@@ -175,6 +177,12 @@ Get the token from `https://dashboard.linkrunner.io/dashboard/settings/project-d
 | `deeplinkRouting` | boolean | no | no | `true` | Route resolved deferred deep links into the Appbrew router. |
 | `uninstallTracking` | boolean | no | no | `true` | Register the push token for uninstall measurement. |
 | `enableRefunds` | boolean | no | no | `false` | Forward `refund` to `removePayment`. See [Refunds](#refunds). |
+| `consentIsEEA` | text | no | no | unset | Google Ads consent: `granted`, `denied` or `unknown`. See [Consent](#consent). |
+| `consentAdUserData` | text | no | no | unset | Google Ads consent for ad user data. |
+| `consentAdPersonalization` | text | no | no | unset | Google Ads consent for ad personalization. |
+| `enableTCFConsentCollection` | boolean | no | no | `false` | Let the SDK read TCF consent from the device CMP (Android). |
+| `clevertapIntegration` | boolean | no | no | `true` | Send the CleverTap ID to Linkrunner. No-ops without `clevertap-react-native`. |
+| `analyticsIdentifiers` | boolean | no | no | `true` | Attach Firebase Analytics ids to `signup()` / `setUserData()`. |
 | `eventsMapper` | text (JSON) | no | no | `{}` | Rename events before sending. |
 | `paramsMapper` | text (JSON) | no | no | `{}` | Rename params before sending. |
 | `eventsWhitelist` | text (JSON array) | no | no | all | Restrict which events are forwarded. |
@@ -185,6 +193,8 @@ Get the token from `https://dashboard.linkrunner.io/dashboard/settings/project-d
 `type`, `required` and `secret` come straight from the `appbrew.settings` manifest in this package's `package.json` — that is what generates the merchant-facing form, so the booleans render as toggles rather than free-text fields.
 
 The four JSON-valued settings are declared as `text`; paste a JSON object or array. These are advanced tuning rather than merchant settings, and can be hidden from the form if preferred.
+
+The three consent settings are also `text` because the form has no enum control. `true` / `false` are accepted as aliases for `granted` / `denied`; anything else is treated as not configured.
 
 ### Local development
 
@@ -287,6 +297,82 @@ Hard-mapping `login → setUserData()` would break the middle two cases, which i
 
 **Guest checkout works.** `setCustomerUserId` runs at init, so every device carries a stable id before any login, and `capturePayment` creates the identity itself.
 
+## User identifiers
+
+`signup()` and `setUserData()` carry `id`, `name`, `email`, `phone` and `user_created_at` from Appbrew's customer record, plus:
+
+| Field | Source |
+| --- | --- |
+| `is_first_time_user` | `true` after Appbrew's `signup` event. Omitted otherwise, never sent as `false`. |
+| `ga_app_instance_id`, `ga_session_id` | `@react-native-firebase/analytics`, when installed. Lets you join Linkrunner attribution to your GA4 / BigQuery export. Set `analyticsIdentifiers: false` to skip. |
+
+To push fields Appbrew does not hold (a Mixpanel distinct id, say), call `setUserData` yourself. `id` defaults to the current customer, or the device id for guests:
+
+```typescript
+import { setUserData } from '@linkrunner/appbrew'
+
+await setUserData({ mixpanel_distinct_id: distinctId })
+```
+
+Reference: [Setting user data](https://docs.linkrunner.io/sdk/react-native#setting-user-data)
+
+## CleverTap
+
+When `clevertap-react-native` is installed, the CleverTap ID is read after init and sent with `setAdditionalData({ clevertapId })`, which is what the [CleverTap integration](https://docs.linkrunner.io/analytics-integrations/clevertap) needs. Set `clevertapIntegration: false` to skip, or pass ids yourself:
+
+```typescript
+import { setAdditionalData } from '@linkrunner/appbrew'
+
+await setAdditionalData({ clevertapId })
+```
+
+---
+
+# Attribution data
+
+Read the campaign that drove this install and the deferred deep link, for referral codes, campaign-specific onboarding, or anything else the [feature docs](https://docs.linkrunner.io/features/deferred-deep-linking) describe with `getAttributionData()`:
+
+```typescript
+import { getAttributionData } from '@linkrunner/appbrew'
+
+const attribution = await getAttributionData()
+// { deeplink?: string, campaignData?: { id, name, type, adNetwork, ... } }
+```
+
+- Resolves once the tracker has initialised, so it is safe to call from a screen that mounts before Appbrew runs `trackersInit()`. Gives up with `undefined` after 30 seconds if the tracker was never registered.
+- `undefined` when no token is configured or the SDK has no attribution for this install.
+- One native call per launch. The deferred deep link router shares the same result.
+
+The same method exists on the tracker instance (`tracker.getAttributionData()`). Types `AttributionData` and `CampaignData` are re-exported.
+
+Reference: [Getting attribution data](https://docs.linkrunner.io/sdk/react-native#getting-attribution-data)
+
+---
+
+# Consent
+
+Google Ads attribution (ICM / ODM) needs the user's consent state, and the SDK wants it **before `init()`**. Two ways to provide it:
+
+**Static, from the dashboard.** Set `consentIsEEA`, `consentAdUserData` and `consentAdPersonalization` in the integration settings. The tracker forwards them with `setConsent()` before `init()` on every launch. Only configured flags are sent; an unset flag is left out rather than sent as `unknown`.
+
+**Dynamic, from a CMP.** Call `setConsent` whenever the user's choice changes. It is SDK-level state, so it works before the tracker exists:
+
+```typescript
+import { setConsent } from '@linkrunner/appbrew'
+
+setConsent({
+  isEEA: 'granted',
+  hasConsentForDataUsage: 'granted',
+  hasConsentForAdsPersonalization: 'denied',
+})
+```
+
+Consent is stored between launches. Call `setConsent` again when the user withdraws it, or the previous value keeps being sent.
+
+`enableTCFConsentCollection` lets the SDK read IAB TCF consent from the device CMP on Android instead.
+
+Reference: [Google Integrated Conversion Measurement](https://docs.linkrunner.io/sdk/react-native#google-integrated-conversion-measurement-optional)
+
 ---
 
 # Revenue
@@ -335,6 +421,15 @@ Two distinct flows, handled deliberately differently.
 Deferred routing applies **once per install**: `getAttributionData()` returns the same URL on every cold start, so replaying it would hijack every launch.
 
 Set `deeplinkRouting: false` to report links for attribution without touching the router.
+
+Links that arrive through another channel (a push payload, an in-app banner) can be reported by hand. The result says whether Linkrunner recognised the link:
+
+```typescript
+import { handleDeeplink } from '@linkrunner/appbrew'
+
+const result = await handleDeeplink(url)
+// { deeplink?: string, isLinkrunner: boolean, processing?: boolean }
+```
 
 ## Native configuration
 
@@ -494,6 +589,8 @@ Reference: [Integration testing](https://docs.linkrunner.io/testing/integration-
 | Reinstalls read as existing installs | Backup rules missing from `AndroidManifest.xml` |
 | Deep link opens the app but does not navigate | Domain verification incomplete |
 | Duplicate payments | `capturePayment` called from both app and webhook with different `payment_id` |
+| `getAttributionData()` resolves `undefined` | No token, or the device installed directly from the store. Check with `debug: true` |
+| `tracker not initialised` warning | A public call waited 30s and Appbrew never ran `trackersInit()`. Registration is probably inside `if (!__DEV__)` |
 
 ---
 
@@ -503,6 +600,15 @@ Reference: [Integration testing](https://docs.linkrunner.io/testing/integration-
 import {
   LinkrunnerTrackerV2,     // the tracker — register with AnalyticsProvider
   LinkrunnerTracker,       // alias
+
+  // Module-level calls. Delegate to the most recently constructed tracker.
+  getAttributionData,      // deferred deep link + campaign for this install
+  setConsent,              // Google Ads consent; works before init
+  setUserData,             // extra user fields; id defaults to the current user
+  setAdditionalData,       // integration ids, e.g. { clevertapId }
+  handleDeeplink,          // report a url; returns { isLinkrunner, ... }
+  getActiveTracker,
+
   toEcommercePayload,      // Appbrew items[] → Meta Catalog Sales fields
   buildEventData,
   buildPurchaseEventData,
@@ -515,8 +621,13 @@ import type {
   LinkrunnerIntegrationConfig,
   LinkrunnerTrackerOptions,
   EcommercePayload,
+  // Re-exported from rn-linkrunner
+  AttributionData, CampaignData, DeeplinkData,
+  LinkrunnerConsent, ConsentStatus, IntegrationData, UserData,
 } from '@linkrunner/appbrew'
 ```
+
+The same five calls exist as methods on the tracker instance.
 
 ## Links
 
