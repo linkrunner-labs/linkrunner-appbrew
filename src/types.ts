@@ -1,4 +1,8 @@
 import type { AnalyticsEvent, AnalyticsEventParams } from '@gauntlet/types'
+import type { ConsentStatus } from 'rn-linkrunner'
+
+/** `granted` | `denied` | `unknown`, or a boolean. Free text from the dashboard is normalised. */
+export type ConsentSetting = ConsentStatus | boolean | string
 
 /**
  * Shape of `config.integrations.linkrunner`, populated by the Appbrew dashboard
@@ -29,6 +33,29 @@ export interface LinkrunnerIntegrationConfig {
    * call would usually no-op. See the README before enabling.
    */
   enableRefunds?: boolean
+
+  /**
+   * Google Ads consent, forwarded to `setConsent()` before `init()`. Each
+   * accepts `granted`, `denied` or `unknown` (booleans also work). Leave unset
+   * when a CMP in the app calls `setConsent()` itself.
+   */
+  consentIsEEA?: ConsentSetting
+  consentAdUserData?: ConsentSetting
+  consentAdPersonalization?: ConsentSetting
+  /** Let the SDK read TCF consent from the device CMP. Android only. */
+  enableTCFConsentCollection?: boolean
+
+  /**
+   * Link the CleverTap ID to the Linkrunner user. Defaults to on; no-ops
+   * without `clevertap-react-native`.
+   */
+  clevertapIntegration?: boolean
+  /**
+   * Attach Firebase Analytics ids (`ga_app_instance_id`, `ga_session_id`) to
+   * `signup()` / `setUserData()`. Defaults to on; no-ops without
+   * `@react-native-firebase/analytics`.
+   */
+  analyticsIdentifiers?: boolean
 
   eventsMapper?: Record<string, string>
   paramsMapper?: Record<string, string>

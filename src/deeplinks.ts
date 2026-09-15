@@ -1,9 +1,8 @@
 import { AppState, Linking } from 'react-native'
 import { navigationRef, useAppStore } from '@gauntlet/state'
-import linkrunner from 'rn-linkrunner'
+import linkrunner, { type AttributionData } from 'rn-linkrunner'
 
 import { trackerStorage } from './storage'
-import { withTimeout } from './utils'
 
 /**
  * Appbrew's router is reached through one hook: `route.setInitialUrl(url)`,
@@ -52,6 +51,11 @@ export interface DeeplinkBridgeOptions {
   /** Route resolved deferred links into the Appbrew router. Attribution still runs when false. */
   routing: boolean
   run: (label: string, fn: () => Promise<unknown>) => Promise<void>
+  /**
+   * The tracker's memoised attribution fetch. Shared with the public
+   * `getAttributionData()` so one launch makes one native call.
+   */
+  getAttribution: () => Promise<AttributionData | undefined>
   debug?: boolean
 }
 
@@ -62,7 +66,7 @@ export interface DeeplinkBridgeOptions {
  * hijacking an intentional tap.
  */
 export async function bootstrapDeepLinks(options: DeeplinkBridgeOptions) {
-  const { routing, run, debug } = options
+  const { routing, run, getAttribution, debug } = options
 
   // Warm starts: attribution only. Appbrew's `subscribe()` handles navigation;
   // writing these back would double-navigate.
@@ -93,12 +97,8 @@ export async function bootstrapDeepLinks(options: DeeplinkBridgeOptions) {
   )
 
   try {
-    const attribution: any = await withTimeout(
-      Promise.resolve(linkrunner.getAttributionData()),
-      15000,
-      'getAttributionData'
-    )
-    const url: string | undefined = attribution?.deeplink
+    const attribution = await getAttribution()
+    const url = attribution?.deeplink
 
     // Spent either way — replaying it on later cold starts would hijack them.
     trackerStorage.markDeferredConsumed()

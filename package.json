@@ -1,7 +1,7 @@
 {
   "name": "@linkrunner/appbrew",
-  "version": "0.1.6",
-  "description": "Linkrunner attribution for Appbrew apps \u2014 installs, in-app events, revenue, and deep links.",
+  "version": "0.2.0",
+  "description": "Linkrunner attribution for Appbrew apps — installs, in-app events, revenue, and deep links.",
   "license": "MIT",
   "author": "Linkrunner <support@linkrunner.io>",
   "homepage": "https://docs.linkrunner.io",
@@ -41,7 +41,9 @@
     "@gauntlet/local-storage": "*",
     "@gauntlet/state": "*",
     "@gauntlet/types": "*",
-    "@react-native-firebase/messaging": "*"
+    "@react-native-firebase/messaging": "*",
+    "@react-native-firebase/analytics": "*",
+    "clevertap-react-native": "*"
   },
   "peerDependenciesMeta": {
     "@gauntlet/analytics": {
@@ -60,6 +62,12 @@
       "optional": true
     },
     "@react-native-firebase/messaging": {
+      "optional": true
+    },
+    "@react-native-firebase/analytics": {
+      "optional": true
+    },
+    "clevertap-react-native": {
       "optional": true
     }
   },
@@ -133,6 +141,45 @@
       {
         "key": "enableRefunds",
         "title": "Forward Refunds",
+        "required": false,
+        "type": "boolean"
+      },
+      {
+        "key": "consentIsEEA",
+        "title": "Google Ads Consent (EEA User)",
+        "placeholder": "granted, denied or unknown",
+        "required": false,
+        "type": "text"
+      },
+      {
+        "key": "consentAdUserData",
+        "title": "Google Ads Consent (Ad User Data)",
+        "placeholder": "granted, denied or unknown",
+        "required": false,
+        "type": "text"
+      },
+      {
+        "key": "consentAdPersonalization",
+        "title": "Google Ads Consent (Ad Personalization)",
+        "placeholder": "granted, denied or unknown",
+        "required": false,
+        "type": "text"
+      },
+      {
+        "key": "enableTCFConsentCollection",
+        "title": "Read TCF Consent From CMP (Android)",
+        "required": false,
+        "type": "boolean"
+      },
+      {
+        "key": "clevertapIntegration",
+        "title": "Link CleverTap ID",
+        "required": false,
+        "type": "boolean"
+      },
+      {
+        "key": "analyticsIdentifiers",
+        "title": "Attach Firebase Analytics IDs",
         "required": false,
         "type": "boolean"
       },

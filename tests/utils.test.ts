@@ -118,3 +118,21 @@ describe('Serializer', () => {
     warn.mockRestore()
   })
 })
+
+describe('tryRequire', () => {
+  it('returns undefined when the loader throws, as a missing module does', async () => {
+    const { tryRequire } = await import('../src/utils')
+    expect(
+      tryRequire(() => {
+        throw new Error("Cannot find module 'x'")
+      })
+    ).toBeUndefined()
+  })
+
+  it('unwraps a default export and passes plain modules through', async () => {
+    const { tryRequire } = await import('../src/utils')
+    const mod = { hello: 1 }
+    expect(tryRequire(() => ({ default: mod }))).toBe(mod)
+    expect(tryRequire(() => mod)).toBe(mod)
+  })
+})

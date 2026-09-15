@@ -6,9 +6,22 @@ import {
   type AnalyticsPayload,
   type AppConfig,
 } from '@gauntlet/types'
-import linkrunner, { type UserData } from 'rn-linkrunner'
+import linkrunner, {
+  type AttributionData,
+  type DeeplinkData,
+  type IntegrationData,
+  type LinkrunnerConsent,
+  type UserData,
+} from 'rn-linkrunner'
 
+import { registerActiveTracker } from './api'
+import {
+  applyConsent,
+  applyTcfConsentCollection,
+  consentFromSettings,
+} from './consent'
 import { bootstrapDeepLinks } from './deeplinks'
+import { readClevertapId, readFirebaseAnalyticsIds } from './integrations'
 import { registerPushToken } from './push'
 import {
   DEFAULT_EVENTS_MAPPER,
@@ -42,6 +55,15 @@ const DEFAULT_PARAMS_WHITELIST = Object.values(AnalyticsEventParams)
 const PAYMENT_TYPE = 'DEFAULT' as const
 const PAYMENT_STATUS = 'PAYMENT_COMPLETED' as const
 
+/** Deferred attribution can wait on install referrer plus a server lookup. */
+const ATTRIBUTION_TIMEOUT_MS = 15000
+/**
+ * How long a public call waits for Appbrew to invoke `initTracker`. It runs
+ * seconds into the session (after splash, push prompt and ATT), so a screen
+ * that mounts early must wait rather than fail.
+ */
+const INIT_WAIT_TIMEOUT_MS = 30000
+
 /**
  * Linkrunner attribution for Appbrew apps.
  *
@@ -60,6 +82,12 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
   private enabled = false
   private serializer = new Serializer()
   private initPromise?: Promise<void>
+  /** Settles when Appbrew calls `initTracker`; public methods wait on it. */
+  private initStarted: Promise<void>
+  private markInitStarted!: () => void
+  private attributionPromise?: Promise<AttributionData | undefined>
+  /** Set by Appbrew's `signup` event, so `signup()` can carry `is_first_time_user`. */
+  private firstTimeUser = false
 
   private instanceId = ''
   private customerId?: string
@@ -68,6 +96,10 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
   constructor(options: LinkrunnerTrackerOptions = {}) {
     super()
     this.overrides = options
+    this.initStarted = new Promise<void>((resolve) => {
+      this.markInitStarted = resolve
+    })
+    registerActiveTracker(this)
 
     // Must be set here, NOT in initTracker: AnalyticsProviderV2 checks
     // eventsWhitelist *before* calling send(), so events arriving while it is
@@ -102,6 +134,7 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
         console.warn('[linkrunner/appbrew] initTracker failed', error)
       }
     })()
+    this.markInitStarted()
 
     return this.initPromise
   }
@@ -146,6 +179,14 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
     this.customerId =
       this.readCustomerIdFromStore() ?? trackerStorage.getCustomerId()
 
+    // Consent must reach the SDK before `init()`: the install payload is built
+    // during init, and consent set afterwards only applies to the next launch.
+    const consent = consentFromSettings(settings)
+    if (consent) applyConsent(consent, settings.debug)
+    if (settings.enableTCFConsentCollection) {
+      applyTcfConsentCollection(true, settings.debug)
+    }
+
     // Awaited: every other SDK method silently no-ops until the token is set,
     // with no queue to recover from.
     await withTimeout(
@@ -186,6 +227,7 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
     bootstrapDeepLinks({
       routing: this.settings.deeplinkRouting !== false,
       run: (label, fn) => this.run(label, fn),
+      getAttribution: () => this.fetchAttribution(),
       debug: this.settings.debug,
     }).catch((error) => {
       console.warn('[linkrunner/appbrew] deeplink bridge failed', error)
@@ -201,7 +243,122 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
       })
     }
 
+    // Not awaited: the CleverTap bridge answers over a callback that can lag
+    // behind its own native init. Nothing in the event path depends on it.
+    if (settings.clevertapIntegration !== false) {
+      this.linkClevertapId()
+    }
+
     this.resolveIdentity()
+  }
+
+  private linkClevertapId() {
+    readClevertapId()
+      .then((clevertapId) => {
+        if (!clevertapId) return
+        return this.run('setAdditionalData:clevertap', () =>
+          linkrunner.setAdditionalData({ clevertapId })
+        )
+      })
+      .catch((error) => {
+        console.warn('[linkrunner/appbrew] CleverTap id lookup failed', error)
+      })
+  }
+
+  /**
+   * Resolves once Appbrew has called `initTracker` and init has settled.
+   * Returns whether the tracker ended up enabled.
+   */
+  private async whenReady(): Promise<boolean> {
+    try {
+      await withTimeout(this.initStarted, INIT_WAIT_TIMEOUT_MS, 'initTracker')
+      await this.initPromise
+    } catch (error) {
+      console.warn('[linkrunner/appbrew] tracker not initialised', error)
+      return false
+    }
+    return this.enabled
+  }
+
+  /**
+   * One native `getAttributionData()` per launch, shared between deferred deep
+   * link routing and the public accessor. A failed call is not cached, so the
+   * next caller retries.
+   */
+  private fetchAttribution(): Promise<AttributionData | undefined> {
+    if (!this.attributionPromise) {
+      this.attributionPromise = withTimeout(
+        Promise.resolve(linkrunner.getAttributionData()),
+        ATTRIBUTION_TIMEOUT_MS,
+        'getAttributionData'
+      )
+        .then((data) => (data ? (data as AttributionData) : undefined))
+        .catch((error) => {
+          console.warn('[linkrunner/appbrew] getAttributionData failed', error)
+          this.attributionPromise = undefined
+          return undefined
+        })
+    }
+    return this.attributionPromise
+  }
+
+  // --------------------------------------------------------------- public API
+
+  /**
+   * Attribution for this install: `deeplink` and `campaignData`. Waits for
+   * init; `undefined` when the tracker is disabled or the SDK has no data.
+   */
+  async getAttributionData(): Promise<AttributionData | undefined> {
+    if (!(await this.whenReady())) return undefined
+    return this.fetchAttribution()
+  }
+
+  /**
+   * Google Ads consent. Works before init (the SDK stores it), and should be
+   * called again whenever the user's choice changes.
+   */
+  setConsent(consent: LinkrunnerConsent): void {
+    applyConsent(consent, this.settings.debug)
+  }
+
+  /**
+   * Push additional user fields. `id` defaults to the resolved customer id, or
+   * the device id for guests, so callers can pass just the fields they have.
+   */
+  async setUserData(data: Partial<UserData>): Promise<void> {
+    if (!(await this.whenReady())) return
+    const id = nonEmptyString(data.id) ?? this.resolveUserId()
+    await this.run('setUserData', () =>
+      linkrunner.setUserData({ ...data, id })
+    )
+  }
+
+  /** Third-party integration ids, such as the CleverTap ID. */
+  async setAdditionalData(data: IntegrationData): Promise<void> {
+    if (!(await this.whenReady())) return
+    await this.run('setAdditionalData', () => linkrunner.setAdditionalData(data))
+  }
+
+  /**
+   * Report a url to Linkrunner and learn whether it was a Linkrunner link.
+   * Incoming links are already reported by the tracker; this is for urls that
+   * arrive through another channel (push payloads, in-app banners).
+   */
+  async handleDeeplink(url: string): Promise<DeeplinkData | undefined> {
+    const target = nonEmptyString(url)
+    if (!target) return undefined
+    if (!(await this.whenReady())) return undefined
+    try {
+      const result = await withTimeout(
+        Promise.resolve(linkrunner.handleDeeplink(target)),
+        8000,
+        'handleDeeplink'
+      )
+      return result ? (result as DeeplinkData) : undefined
+    } catch (error) {
+      console.warn('[linkrunner/appbrew] handleDeeplink failed', error)
+      return undefined
+    }
   }
 
   /**
@@ -271,7 +428,7 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
     )
   }
 
-  private toUserData(user: any, id: string): UserData {
+  private async toUserData(user: any, id: string): Promise<UserData> {
     const data: UserData = { id }
 
     const name = nonEmptyString(user?.displayName)
@@ -286,6 +443,14 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
     // Helps Linkrunner tell a reinstall apart from a genuinely new user.
     const createdAt = nonEmptyString(user?.createdAt)
     if (createdAt) data.user_created_at = createdAt
+    // Only asserted, never denied: absence means "not known", not "returning".
+    if (this.firstTimeUser) data.is_first_time_user = true
+
+    // GA4 ids let the merchant join Linkrunner attribution to their Firebase
+    // or BigQuery export.
+    if (this.settings.analyticsIdentifiers !== false) {
+      Object.assign(data, await readFirebaseAnalyticsIds())
+    }
 
     return data
   }
@@ -294,7 +459,7 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
     const id = normalizeCustomerId(user?.id)
     if (!id) return
 
-    const userData = this.toUserData(user, id)
+    const userData = await this.toUserData(user, id)
 
     // The subscription refires on any userDetails mutation (address edits,
     // profile updates), so skip identical repeats.
@@ -345,7 +510,11 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
       // and can be missed. Idempotent per (install, user), so no duplicate
       // signup. Both still forward as ordinary events.
       case AnalyticsEvent.SIGNUP:
+        this.firstTimeUser = true
+        this.resolveIdentity()
+        break
       case AnalyticsEvent.LOGIN:
+        this.firstTimeUser = false
         this.resolveIdentity()
         break
 
@@ -444,6 +613,7 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
     // to the previous customer — permanently, since capturePayment is deduped.
     this.customerId = undefined
     this.lastUserSnapshot = undefined
+    this.firstTimeUser = false
     trackerStorage.clearCustomerId()
 
     // `lr:signed-up-user-id` is deliberately kept, so a re-login is a

@@ -19,9 +19,15 @@ export const AnalyticsEvent = {
   LOGIN: 'login',
   APP_INSTALL_ANDROID: 'app_install_android',
   APP_INSTALL_IOS: 'app_install_ios',
+  SCREEN_VIEW: 'screen_view',
 } as const
 
 export type AnalyticsEvent = (typeof AnalyticsEvent)[keyof typeof AnalyticsEvent]
 export type AnalyticsPayload = any
-export type AnalyticsEventParams = string
+export const AnalyticsEventParams = {
+  SCREEN_NAME: 'screen_name',
+} as const
+
+export type AnalyticsEventParams =
+  (typeof AnalyticsEventParams)[keyof typeof AnalyticsEventParams]
 export type AppConfig = any

@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.2.0
+
+Exposes the rest of the `rn-linkrunner` API that Appbrew merchants could not
+reach through the tracker. JavaScript only, but the package is
+`requiresNativeBuild: true`, so merchant apps still need a release.
+
+New module-level exports, each also a method on the tracker:
+
+- `getAttributionData()`: the deferred deep link and campaign for this install.
+  Waits for init, memoised to one native call per launch, and shared with the
+  deferred deep link router.
+- `setConsent()`: Google Ads consent. SDK-level, so it works before init.
+- `setUserData()`: extra user fields, with `id` defaulting to the current
+  customer or the device id.
+- `setAdditionalData()`: integration ids such as the CleverTap ID.
+- `handleDeeplink()`: report a url and learn whether it was a Linkrunner link.
+
+New dashboard settings: `consentIsEEA`, `consentAdUserData`,
+`consentAdPersonalization` (forwarded to `setConsent()` before `init()`),
+`enableTCFConsentCollection`, `clevertapIntegration` and
+`analyticsIdentifiers`.
+
+Automatic behaviour:
+
+- The CleverTap ID is sent with `setAdditionalData()` after init when
+  `clevertap-react-native` is installed.
+- `signup()` / `setUserData()` carry `ga_app_instance_id` and `ga_session_id`
+  from `@react-native-firebase/analytics` when installed, and
+  `is_first_time_user: true` after Appbrew's `signup` event.
+
+Both modules are optional peers; without them the feature switches off.
+
+Types `AttributionData`, `CampaignData`, `DeeplinkData`, `LinkrunnerConsent`,
+`ConsentStatus`, `IntegrationData` and `UserData` are re-exported from
+`rn-linkrunner`.
+
+Tests now cover the tracker itself against stubs of `@gauntlet/analytics`,
+`@gauntlet/state` and `@gauntlet/local-storage`.
+
 ## 0.1.6
 
 Corrects the `appbrew.settings` manifest so Appbrew's dashboard renders the

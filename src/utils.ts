@@ -75,3 +75,20 @@ export function nonEmptyString(value: unknown) {
   const str = String(value).trim()
   return str.length > 0 ? str : undefined
 }
+
+/**
+ * Resolve an optional peer without a hard dependency on it.
+ *
+ * The `require()` call stays inside the caller's arrow so Metro still sees a
+ * string literal and can bundle the module when it is present. When the
+ * package is not installed the require throws at runtime and this returns
+ * `undefined`, so the feature that needs it quietly switches off.
+ */
+export function tryRequire<T = any>(load: () => T): T | undefined {
+  try {
+    const mod: any = load()
+    return (mod?.default ?? mod) as T
+  } catch {
+    return undefined
+  }
+}
