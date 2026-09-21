@@ -77,6 +77,7 @@ const INIT_WAIT_TIMEOUT_MS = 30000
  * demo store config has no `integrations.linkrunner` key at all.
  */
 export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
+  protected trackerName = 'LinkrunnerTrackerV2'
   private overrides: LinkrunnerTrackerOptions
   private settings: LinkrunnerIntegrationConfig = {}
   private enabled = false
@@ -383,20 +384,15 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
   }
 
   /**
-   * Drain the user queue first, then delegate.
+   * Resolve identity before the backlog replays.
    *
-   * The base class drains `eventQueue` first and `setUserEventQueue` last, so a
-   * queued purchase would reach `capturePayment` before the queued
-   * `setUserDetails` had run `signup()`.
-   *
-   * Delegating to `super` rather than reimplementing keeps this
-   * forward-compatible: if Appbrew adds a fourth queue, it still gets drained.
+   * `AnalyticsTrackerV2` holds a single private `backlogQueue` and replays it
+   * wholesale, so a subclass cannot reorder it. Running `resolveIdentity` first
+   * keeps the guarantee that mattered: `signup()` is under way before a queued
+   * purchase reaches `capturePayment`.
    */
   processBacklogEventsFromQueue(): void {
-    while (this.setUserEventQueue.length > 0) {
-      const { user } = this.setUserEventQueue.shift() || {}
-      void this.setUserDetails(user)
-    }
+    this.resolveIdentity()
     super.processBacklogEventsFromQueue()
   }
 

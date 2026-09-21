@@ -7,9 +7,11 @@
  * `processBacklogEventsFromQueue` can be exercised.
  */
 export class AnalyticsTrackerV2 {
-  eventQueue: { event: any; payload: any }[] = []
-  screenViewEventQueue: { screenName: string }[] = []
-  setUserEventQueue: { user: any }[] = []
+  // The real base keeps ONE private backlog queue. It has no eventQueue /
+  // screenViewEventQueue / setUserEventQueue — those are on the v1
+  // AnalyticsTracker, which this class does not extend.
+  protected backlogQueue: { event: any; payload: any }[] = []
+  protected trackerName = 'StubTrackerV2'
   initialized = false
   eventsMapper: Record<string, string> = {}
   paramsMapper: Record<string, string> = {}
@@ -22,17 +24,8 @@ export class AnalyticsTrackerV2 {
   async setUserDetails(_u?: any): Promise<void> {}
 
   processBacklogEventsFromQueue(): void {
-    while (this.eventQueue.length > 0) {
-      const { event, payload } = this.eventQueue.shift() || {}
+    for (const { event, payload } of this.backlogQueue.splice(0)) {
       void this.sendEvent(event, payload)
-    }
-    while (this.screenViewEventQueue.length > 0) {
-      const { screenName } = this.screenViewEventQueue.shift() || {}
-      void this.sendScreenView(screenName)
-    }
-    while (this.setUserEventQueue.length > 0) {
-      const { user } = this.setUserEventQueue.shift() || {}
-      void this.setUserDetails(user)
     }
   }
 
