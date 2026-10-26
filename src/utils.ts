@@ -77,12 +77,14 @@ export function nonEmptyString(value: unknown) {
 }
 
 /**
- * Resolve an optional peer without a hard dependency on it.
+ * Resolve an optional peer without a hard dependency on it, unwrapping an ES
+ * module default export.
  *
- * The `require()` call stays inside the caller's arrow so Metro still sees a
- * string literal and can bundle the module when it is present. When the
- * package is not installed the require throws at runtime and this returns
- * `undefined`, so the feature that needs it quietly switches off.
+ * The caller's `require()` must sit lexically inside its own `try` block.
+ * Metro and Re.Pack (rspack, which Appbrew apps build with) only treat a
+ * missing module as optional there; anywhere else, including inside this
+ * function's `try`, a missing package fails the whole bundle. When the package
+ * is absent the loader returns or throws, and this returns `undefined`.
  */
 export function tryRequire<T = any>(load: () => T): T | undefined {
   try {

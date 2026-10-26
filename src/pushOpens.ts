@@ -20,17 +20,36 @@ export interface PushOpenSources {
   firebasePush?: () => any
 }
 
+// Each require sits inside its own `try` so the bundler treats the module as
+// optional. See `tryRequire`.
 const defaultSources: Required<PushOpenSources> = {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   messaging: () =>
-    tryRequire(() => require('@react-native-firebase/messaging')),
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  notifee: () => tryRequire(() => require('@notifee/react-native')),
+    tryRequire(() => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        return require('@react-native-firebase/messaging')
+      } catch {
+        return undefined
+      }
+    }),
+  notifee: () =>
+    tryRequire(() => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        return require('@notifee/react-native')
+      } catch {
+        return undefined
+      }
+    }),
   firebasePush: () =>
-    tryRequire(
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      () => require('@gauntlet/firebase-push').FirebasePush
-    ),
+    tryRequire(() => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        return require('@gauntlet/firebase-push').FirebasePush
+      } catch {
+        return undefined
+      }
+    }),
 }
 
 function isHttpUrl(value: unknown): value is string {
