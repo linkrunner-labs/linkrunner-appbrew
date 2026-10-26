@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/@linkrunner/appbrew)](https://www.npmjs.com/package/@linkrunner/appbrew)
 
-Linkrunner attribution for [Appbrew](https://appbrew.tech) apps — install attribution, in-app event forwarding, revenue, deep links and uninstall measurement.
+Linkrunner attribution for [Appbrew](https://appbrew.tech) apps: install attribution, in-app event forwarding, revenue, deep links, push notification opens and uninstall measurement.
 
 ## What this is
 
@@ -36,6 +36,7 @@ app open
   └─ init(token)                      registers the install, both platforms
      ├─ setCustomerUserId(deviceId)   guests get a stable id immediately
      ├─ getAttributionData()          deferred deep link, if any
+     ├─ handleDeeplink()              links and push taps that open the app
      ├─ setPushToken()                uninstall tracking
      └─ setAdditionalData()           CleverTap id, if the module is present
 ```

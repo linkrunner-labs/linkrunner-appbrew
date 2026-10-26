@@ -1,7 +1,7 @@
 {
   "name": "@linkrunner/appbrew",
   "version": "0.3.0",
-  "description": "Linkrunner attribution for Appbrew apps — installs, in-app events, revenue, and deep links.",
+  "description": "Linkrunner attribution for Appbrew apps: installs, in-app events, revenue, deep links and push notification opens.",
   "license": "MIT",
   "author": "Linkrunner <support@linkrunner.io>",
   "homepage": "https://docs.linkrunner.io",
