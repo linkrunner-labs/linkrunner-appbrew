@@ -28,6 +28,11 @@ export interface LinkrunnerIntegrationConfig {
   /** Defaults to on; no-ops without `@react-native-firebase/messaging`. */
   uninstallTracking?: boolean
   /**
+   * Report push notification taps to `handleDeeplink` for re-engagement
+   * attribution. Defaults to on; no-ops without a push module.
+   */
+  pushOpenAttribution?: boolean
+  /**
    * Forward `refund` to `removePayment`. Off by default: Appbrew's refund
    * payload carries a different id namespace than its purchase payload, so the
    * call would usually no-op. See the README before enabling.

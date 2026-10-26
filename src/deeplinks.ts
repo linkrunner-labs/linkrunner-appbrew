@@ -1,6 +1,6 @@
 import { AppState, Linking } from 'react-native'
 import { navigationRef, useAppStore } from '@gauntlet/state'
-import linkrunner, { type AttributionData } from 'rn-linkrunner'
+import type { AttributionData } from 'rn-linkrunner'
 
 import { trackerStorage } from './storage'
 
@@ -50,7 +50,8 @@ async function waitForNavReady(timeoutMs: number): Promise<boolean> {
 export interface DeeplinkBridgeOptions {
   /** Route resolved deferred links into the Appbrew router. Attribution still runs when false. */
   routing: boolean
-  run: (label: string, fn: () => Promise<unknown>) => Promise<void>
+  /** Reports a url to Linkrunner; dedupes the same link seen twice. */
+  report: (label: string, url: string) => Promise<void>
   /**
    * The tracker's memoised attribution fetch. Shared with the public
    * `getAttributionData()` so one launch makes one native call.
@@ -66,20 +67,20 @@ export interface DeeplinkBridgeOptions {
  * hijacking an intentional tap.
  */
 export async function bootstrapDeepLinks(options: DeeplinkBridgeOptions) {
-  const { routing, run, getAttribution, debug } = options
+  const { routing, report, getAttribution, debug } = options
 
   // Warm starts: attribution only. Appbrew's `subscribe()` handles navigation;
   // writing these back would double-navigate.
   const subscription = Linking.addEventListener('url', ({ url }) => {
     if (!url) return
-    run('handleDeeplink:warm', () => linkrunner.handleDeeplink(url))
+    report('handleDeeplink:warm', url)
   })
 
   // Definitive signal for "this launch came from a real link".
   const incoming = await Linking.getInitialURL().catch(() => null)
   if (incoming) {
     trackerStorage.markDeferredConsumed()
-    await run('handleDeeplink:cold', () => linkrunner.handleDeeplink(incoming))
+    await report('handleDeeplink:cold', incoming)
     return subscription
   }
 
