@@ -49,6 +49,18 @@ vi.mock('rn-linkrunner', () => {
   }
 })
 
+/** The push bridge's reporter, captured so a push tap can be simulated. */
+const pushOpens = vi.hoisted(() => ({
+  report: undefined as undefined | ((label: string, url: string) => Promise<void>),
+}))
+
+vi.mock('../src/pushOpens', () => ({
+  bootstrapPushOpens: vi.fn((options: any) => {
+    pushOpens.report = options.report
+    return () => undefined
+  }),
+}))
+
 vi.mock('../src/integrations', () => ({
   readFirebaseAnalyticsIds: vi.fn(async () => ({
     ga_app_instance_id: 'ga-app',
@@ -58,6 +70,7 @@ vi.mock('../src/integrations', () => ({
 }))
 
 import linkrunner from 'rn-linkrunner'
+import { Linking } from 'react-native'
 
 import { LinkrunnerTrackerV2 } from '../src/analyticsV2'
 import * as api from '../src/api'
@@ -276,6 +289,75 @@ describe('handleDeeplink', () => {
     expect(await tracker.handleDeeplink('   ')).toBeUndefined()
     expect(await tracker.handleDeeplink('https://x')).toBeUndefined()
     expect(sdk.handleDeeplink).not.toHaveBeenCalled()
+  })
+})
+
+describe('push opens', () => {
+  const PUSH_URL = 'https://links.store.example/collections/joggers?c=Ab12Cd'
+
+  /** The listener deeplinks.ts registered on the latest init. */
+  const warmLinkListener = () =>
+    vi.mocked(Linking.addEventListener).mock.calls.at(-1)?.[1] as (e: {
+      url: string
+    }) => void
+
+  beforeEach(() => {
+    pushOpens.report = undefined
+  })
+
+  it('reports a push tap to handleDeeplink', async () => {
+    const tracker = new LinkrunnerTrackerV2({ deeplinkRouting: false })
+    await tracker.initTracker(withToken())
+
+    await pushOpens.report?.('handleDeeplink:push:opened', PUSH_URL)
+    expect(sdk.handleDeeplink).toHaveBeenCalledWith(PUSH_URL)
+  })
+
+  it('reports the url once when the push and Linking both deliver it', async () => {
+    const tracker = new LinkrunnerTrackerV2({ deeplinkRouting: false })
+    await tracker.initTracker(withToken())
+
+    await pushOpens.report?.('handleDeeplink:push:opened', PUSH_URL)
+    warmLinkListener()({ url: PUSH_URL })
+    await flush()
+
+    expect(sdk.handleDeeplink).toHaveBeenCalledTimes(1)
+  })
+
+  it('still reports a different link right away', async () => {
+    const tracker = new LinkrunnerTrackerV2({ deeplinkRouting: false })
+    await tracker.initTracker(withToken())
+
+    await pushOpens.report?.('handleDeeplink:push:opened', PUSH_URL)
+    warmLinkListener()({ url: 'https://links.store.example/products/tee?c=abc' })
+    await flush()
+
+    expect(sdk.handleDeeplink).toHaveBeenCalledTimes(2)
+  })
+
+  it('reports the same link again once the window has passed', async () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(1_000_000)
+    const tracker = new LinkrunnerTrackerV2({ deeplinkRouting: false })
+    await tracker.initTracker(withToken())
+
+    await pushOpens.report?.('handleDeeplink:push:opened', PUSH_URL)
+    now.mockReturnValue(1_000_000 + 61_000)
+    await pushOpens.report?.('handleDeeplink:push:opened', PUSH_URL)
+    now.mockRestore()
+
+    expect(sdk.handleDeeplink).toHaveBeenCalledTimes(2)
+  })
+
+  it('is not started when pushOpenAttribution is off', async () => {
+    const tracker = new LinkrunnerTrackerV2({ deeplinkRouting: false })
+    await tracker.initTracker(withToken({ pushOpenAttribution: false }))
+    expect(pushOpens.report).toBeUndefined()
+  })
+
+  it('is not started without a token', async () => {
+    const tracker = new LinkrunnerTrackerV2()
+    await tracker.initTracker({})
+    expect(pushOpens.report).toBeUndefined()
   })
 })
 

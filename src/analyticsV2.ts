@@ -23,6 +23,7 @@ import {
 import { bootstrapDeepLinks } from './deeplinks'
 import { readClevertapId, readFirebaseAnalyticsIds } from './integrations'
 import { registerPushToken } from './push'
+import { bootstrapPushOpens } from './pushOpens'
 import {
   DEFAULT_EVENTS_MAPPER,
   buildEventData,
@@ -63,6 +64,11 @@ const ATTRIBUTION_TIMEOUT_MS = 15000
  * that mounts early must wait rather than fail.
  */
 const INIT_WAIT_TIMEOUT_MS = 30000
+/**
+ * A push tap can reach us twice: once from the push path and again through
+ * `Linking` when Appbrew opens the url. One report per link inside this window.
+ */
+const LINK_DEDUPE_WINDOW_MS = 60000
 
 /**
  * Linkrunner attribution for Appbrew apps.
@@ -77,6 +83,7 @@ const INIT_WAIT_TIMEOUT_MS = 30000
  * demo store config has no `integrations.linkrunner` key at all.
  */
 export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
+  protected trackerName = 'LinkrunnerTrackerV2'
   private overrides: LinkrunnerTrackerOptions
   private settings: LinkrunnerIntegrationConfig = {}
   private enabled = false
@@ -92,6 +99,7 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
   private instanceId = ''
   private customerId?: string
   private lastUserSnapshot?: string
+  private reportedLinks = new Map<string, number>()
 
   constructor(options: LinkrunnerTrackerOptions = {}) {
     super()
@@ -226,12 +234,23 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
     // seconds. No event depends on the result.
     bootstrapDeepLinks({
       routing: this.settings.deeplinkRouting !== false,
-      run: (label, fn) => this.run(label, fn),
+      report: (label, url) => this.reportLink(label, url),
       getAttribution: () => this.fetchAttribution(),
       debug: this.settings.debug,
     }).catch((error) => {
       console.warn('[linkrunner/appbrew] deeplink bridge failed', error)
     })
+
+    if (settings.pushOpenAttribution !== false) {
+      try {
+        bootstrapPushOpens({
+          report: (label, url) => this.reportLink(label, url),
+          debug: settings.debug,
+        })
+      } catch (error) {
+        console.warn('[linkrunner/appbrew] push open bridge failed', error)
+      }
+    }
 
     // Not awaited: getAPNSToken() can block on APNs registration.
     if (settings.uninstallTracking !== false) {
@@ -383,20 +402,15 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
   }
 
   /**
-   * Drain the user queue first, then delegate.
+   * Resolve identity before the backlog replays.
    *
-   * The base class drains `eventQueue` first and `setUserEventQueue` last, so a
-   * queued purchase would reach `capturePayment` before the queued
-   * `setUserDetails` had run `signup()`.
-   *
-   * Delegating to `super` rather than reimplementing keeps this
-   * forward-compatible: if Appbrew adds a fourth queue, it still gets drained.
+   * `AnalyticsTrackerV2` holds a single private `backlogQueue` and replays it
+   * wholesale, so a subclass cannot reorder it. Running `resolveIdentity` first
+   * keeps the guarantee that mattered: `signup()` is under way before a queued
+   * purchase reaches `capturePayment`.
    */
   processBacklogEventsFromQueue(): void {
-    while (this.setUserEventQueue.length > 0) {
-      const { user } = this.setUserEventQueue.shift() || {}
-      void this.setUserDetails(user)
-    }
+    this.resolveIdentity()
     super.processBacklogEventsFromQueue()
   }
 
@@ -428,8 +442,11 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
     )
   }
 
-  private async toUserData(user: any, id: string): Promise<UserData> {
-    const data: UserData = { id }
+  private async toUserData(
+    user: any,
+    id: string
+  ): Promise<UserData & { id: string }> {
+    const data: UserData & { id: string } = { id }
 
     const name = nonEmptyString(user?.displayName)
     if (name) data.name = name
@@ -635,6 +652,16 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
     } catch {
       return {}
     }
+  }
+
+  private reportLink(label: string, url: string): Promise<void> {
+    const now = Date.now()
+    const last = this.reportedLinks.get(url)
+    if (last !== undefined && now - last < LINK_DEDUPE_WINDOW_MS) {
+      return Promise.resolve()
+    }
+    this.reportedLinks.set(url, now)
+    return this.run(label, () => linkrunner.handleDeeplink(url))
   }
 
   private run(label: string, fn: () => Promise<unknown>) {

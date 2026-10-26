@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/@linkrunner/appbrew)](https://www.npmjs.com/package/@linkrunner/appbrew)
 
-Linkrunner attribution for [Appbrew](https://appbrew.tech) apps — install attribution, in-app event forwarding, revenue, deep links and uninstall measurement.
+Linkrunner attribution for [Appbrew](https://appbrew.tech) apps: install attribution, in-app event forwarding, revenue, deep links, push notification opens and uninstall measurement.
 
 ## What this is
 
@@ -36,6 +36,7 @@ app open
   └─ init(token)                      registers the install, both platforms
      ├─ setCustomerUserId(deviceId)   guests get a stable id immediately
      ├─ getAttributionData()          deferred deep link, if any
+     ├─ handleDeeplink()              links and push taps that open the app
      ├─ setPushToken()                uninstall tracking
      └─ setAdditionalData()           CleverTap id, if the module is present
 ```
@@ -47,7 +48,7 @@ You do not call `init()` yourself. The tracker runs it inside `initTracker`, whi
 ## Requirements
 
 - An Appbrew app (`@gauntlet/*` packages)
-- `rn-linkrunner` >= 3.0.0
+- `rn-linkrunner` >= 3.4.1
 - iOS 15.0+, Android minSdk 24
 - A Linkrunner project token
 
@@ -176,6 +177,7 @@ Get the token from `https://dashboard.linkrunner.io/dashboard/settings/project-d
 | `trackScreenViews` | boolean | no | no | `false` | Forward `screen_view` / `page_view`. Off — highest-volume events by a wide margin. |
 | `deeplinkRouting` | boolean | no | no | `true` | Route resolved deferred deep links into the Appbrew router. |
 | `uninstallTracking` | boolean | no | no | `true` | Register the push token for uninstall measurement. |
+| `pushOpenAttribution` | boolean | no | no | `true` | Report push notification taps for re-engagement attribution. See [Push opens](#push-opens). |
 | `enableRefunds` | boolean | no | no | `false` | Forward `refund` to `removePayment`. See [Refunds](#refunds). |
 | `consentIsEEA` | text | no | no | unset | Google Ads consent: `granted`, `denied` or `unknown`. See [Consent](#consent). |
 | `consentAdUserData` | text | no | no | unset | Google Ads consent for ad user data. |
@@ -422,7 +424,7 @@ Deferred routing applies **once per install**: `getAttributionData()` returns th
 
 Set `deeplinkRouting: false` to report links for attribution without touching the router.
 
-Links that arrive through another channel (a push payload, an in-app banner) can be reported by hand. The result says whether Linkrunner recognised the link:
+Push notification taps are reported automatically, see [Push opens](#push-opens). Links that arrive through any other channel (an in-app banner, say) can be reported by hand. The result says whether Linkrunner recognised the link:
 
 ```typescript
 import { handleDeeplink } from '@linkrunner/appbrew'
@@ -540,6 +542,20 @@ Full checklist: [debugging domain verification](https://docs.linkrunner.io/featu
 - [Native configuration](https://docs.linkrunner.io/features/deep-linking-setup#step-3-update-native-configuration)
 - [`handleDeeplink`](https://docs.linkrunner.io/sdk/react-native#handle-deeplink)
 - [Remarketing / re-engagement](https://docs.linkrunner.io/features/remarketing)
+
+---
+
+# Push opens
+
+Appbrew's push tool (`@gauntlet/firebase-push`) routes a tap from the notification's `data.link` itself. That never reaches React Native `Linking`, so the tracker listens for push taps directly and reports `data.link` to `handleDeeplink()`. A Linkrunner campaign link in a push then shows up as a re-engagement on that campaign.
+
+It picks taps up from `@react-native-firebase/messaging` (background and cold start), notifee foreground presses, and the message `FirebasePush` opened the app with. All are optional peers; without them this does nothing. A link seen on more than one path, or again through `Linking`, is reported once per minute.
+
+`data.link` must be a full url (`https://your-domain/...?c=XXXX`). A JSON route to a screen handle carries no link to attribute and is skipped.
+
+If your app already calls `handleDeeplink()` from its own push handlers, remove that code. Set `pushOpenAttribution: false` to disable.
+
+Verified on Android with the app in the background, open, and swiped away. One case is not reported: Android killed the process but kept the task, so the tap reaches the activity before React Native has loaded. React Native Firebase drops it, and Appbrew's `FirebasePush` does not navigate either.
 
 ---
 

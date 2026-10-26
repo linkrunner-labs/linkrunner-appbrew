@@ -14,8 +14,14 @@ import { tryRequire } from './utils'
  * token is accepted but no uninstall is ever reported.
  */
 function loadMessaging(): any | undefined {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  return tryRequire(() => require('@react-native-firebase/messaging'))
+  return tryRequire(() => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      return require('@react-native-firebase/messaging')
+    } catch {
+      return undefined
+    }
+  })
 }
 
 export interface PushTokenOptions {

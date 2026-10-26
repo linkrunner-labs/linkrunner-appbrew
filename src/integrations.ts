@@ -7,10 +7,24 @@ import { nonEmptyString, tryRequire, withTimeout } from './utils'
  * degrades to "field absent" rather than crashing at import time.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const loadFirebaseAnalytics = () => require('@react-native-firebase/analytics')
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const loadClevertap = () => require('clevertap-react-native')
+// Each require sits inside its own `try` so the bundler treats the module as
+// optional. See `tryRequire`.
+const loadFirebaseAnalytics = () => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require('@react-native-firebase/analytics')
+  } catch {
+    return undefined
+  }
+}
+const loadClevertap = () => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require('clevertap-react-native')
+  } catch {
+    return undefined
+  }
+}
 
 export interface AnalyticsIdentifiers {
   ga_app_instance_id?: string

@@ -1,7 +1,7 @@
 {
   "name": "@linkrunner/appbrew",
-  "version": "0.2.0",
-  "description": "Linkrunner attribution for Appbrew apps — installs, in-app events, revenue, and deep links.",
+  "version": "0.3.0",
+  "description": "Linkrunner attribution for Appbrew apps: installs, in-app events, revenue, deep links and push notification opens.",
   "license": "MIT",
   "author": "Linkrunner <support@linkrunner.io>",
   "homepage": "https://docs.linkrunner.io",
@@ -34,7 +34,7 @@
     "typecheck:ci": "tsc --noEmit -p tsconfig.ci.json"
   },
   "peerDependencies": {
-    "rn-linkrunner": ">=3.0.0",
+    "rn-linkrunner": ">=3.4.1",
     "react-native": "*",
     "@gauntlet/analytics": "*",
     "@gauntlet/brewery": "*",
@@ -43,7 +43,9 @@
     "@gauntlet/types": "*",
     "@react-native-firebase/messaging": "*",
     "@react-native-firebase/analytics": "*",
-    "clevertap-react-native": "*"
+    "clevertap-react-native": "*",
+    "@gauntlet/firebase-push": "*",
+    "@notifee/react-native": "*"
   },
   "peerDependenciesMeta": {
     "@gauntlet/analytics": {
@@ -69,9 +71,16 @@
     },
     "clevertap-react-native": {
       "optional": true
+    },
+    "@gauntlet/firebase-push": {
+      "optional": true
+    },
+    "@notifee/react-native": {
+      "optional": true
     }
   },
   "devDependencies": {
+    "rn-linkrunner": "3.4.1",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"
   },
@@ -135,6 +144,12 @@
       {
         "key": "uninstallTracking",
         "title": "Uninstall Tracking",
+        "required": false,
+        "type": "boolean"
+      },
+      {
+        "key": "pushOpenAttribution",
+        "title": "Push Open Attribution",
         "required": false,
         "type": "boolean"
       },

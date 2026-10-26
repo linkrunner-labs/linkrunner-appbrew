@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.3.0
+
+Merchant apps need a release: the `rn-linkrunner` floor moves to a new native
+SDK.
+
+- **Push opens are attributed.** Taps on push notifications are reported to
+  `handleDeeplink()`, so a Linkrunner campaign link sent by push records a
+  re-engagement. Appbrew's `FirebasePush` routes `data.link` without going
+  through `Linking`, so these taps were never reported before. Covers
+  background taps, cold starts and foreground notifee presses. New setting
+  `pushOpenAttribution`, on by default. `@gauntlet/firebase-push` and
+  `@notifee/react-native` are new optional peers.
+- A link reported through both the push path and `Linking` is sent once per
+  minute.
+- **Apps without every optional peer build again.** Re.Pack (rspack) failed the
+  whole bundle when `clevertap-react-native`, or any other optional peer, was
+  not installed, because the `require()` was not inside a `try` block. Every
+  optional require now is, and a test keeps it that way.
+- `rn-linkrunner` >= 3.4.1 (LinkrunnerKit 4.3.1 on iOS, android-sdk 4.4.0).
+- Works with `@gauntlet/*` 0.30.0 and later: declares `trackerName` and no
+  longer reads the v1 `setUserEventQueue`, which threw when the startup backlog
+  drained.
+
 ## 0.2.0
 
 Exposes the rest of the `rn-linkrunner` API that Appbrew merchants could not

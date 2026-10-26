@@ -136,3 +136,28 @@ describe('tryRequire', () => {
     expect(tryRequire(() => mod)).toBe(mod)
   })
 })
+
+describe('optional requires', () => {
+  /**
+   * Re.Pack and Metro only treat a missing module as optional when its
+   * `require()` sits inside a `try` block. Outside one, an app without that
+   * package fails to bundle at all.
+   */
+  it('every require in src sits directly inside a try block', async () => {
+    const fs = await import('node:fs')
+    const path = await import('node:path')
+    const dir = path.resolve(__dirname, '../src')
+    const offenders: string[] = []
+
+    for (const file of fs.readdirSync(dir)) {
+      const lines = fs.readFileSync(path.join(dir, file), 'utf8').split('\n')
+      lines.forEach((line, i) => {
+        if (!/\brequire\(['"]/.test(line) || line.trim().startsWith('*')) return
+        const before = lines.slice(Math.max(0, i - 3), i).join('\n')
+        if (!/\btry \{\s*$/m.test(before)) offenders.push(`${file}:${i + 1}`)
+      })
+    }
+
+    expect(offenders).toEqual([])
+  })
+})
