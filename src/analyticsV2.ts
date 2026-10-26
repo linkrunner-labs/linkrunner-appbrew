@@ -424,8 +424,11 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
     )
   }
 
-  private async toUserData(user: any, id: string): Promise<UserData> {
-    const data: UserData = { id }
+  private async toUserData(
+    user: any,
+    id: string
+  ): Promise<UserData & { id: string }> {
+    const data: UserData & { id: string } = { id }
 
     const name = nonEmptyString(user?.displayName)
     if (name) data.name = name

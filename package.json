@@ -34,7 +34,7 @@
     "typecheck:ci": "tsc --noEmit -p tsconfig.ci.json"
   },
   "peerDependencies": {
-    "rn-linkrunner": ">=3.0.0",
+    "rn-linkrunner": ">=3.4.1",
     "react-native": "*",
     "@gauntlet/analytics": "*",
     "@gauntlet/brewery": "*",
@@ -72,6 +72,7 @@
     }
   },
   "devDependencies": {
+    "rn-linkrunner": "3.4.1",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"
   },
