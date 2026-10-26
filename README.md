@@ -555,6 +555,8 @@ It picks taps up from `@react-native-firebase/messaging` (background and cold st
 
 If your app already calls `handleDeeplink()` from its own push handlers, remove that code. Set `pushOpenAttribution: false` to disable.
 
+Verified on Android with the app in the background, open, and swiped away. One case is not reported: Android killed the process but kept the task, so the tap reaches the activity before React Native has loaded. React Native Firebase drops it, and Appbrew's `FirebasePush` does not navigate either.
+
 ---
 
 # Uninstall tracking
