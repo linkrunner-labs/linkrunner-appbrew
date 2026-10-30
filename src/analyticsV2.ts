@@ -75,7 +75,7 @@ const LINK_DEDUPE_WINDOW_MS = 60000
  *
  * Register alongside Appbrew's own trackers:
  *
- *   AnalyticsProvider.getInstance().addTracker(new LinkrunnerTrackerV2())
+ *   AnalyticsProviderV2.getInstance().addTracker(new LinkrunnerTrackerV2())
  *
  * Configuration comes from `config.integrations.linkrunner`, populated in the
  * Appbrew dashboard from the `appbrew.settings` manifest in package.json.

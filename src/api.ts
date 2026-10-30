@@ -13,7 +13,7 @@ import { applyConsent } from './consent'
  * Module-level entry points.
  *
  * Merchants construct the tracker once in `App.tsx` and hand it to Appbrew's
- * `AnalyticsProvider`; screens never hold that instance. These functions
+ * `AnalyticsProviderV2`; screens never hold that instance. These functions
  * delegate to the most recently constructed tracker so a screen can read
  * attribution or push user data without threading the instance through.
  */

@@ -12,7 +12,7 @@ An **adapter**, not an SDK. It translates between Appbrew's analytics system and
 Appbrew app fires "add_to_cart"
         │
         ▼
-AnalyticsProvider → LinkrunnerTrackerV2      ← this package (pure TypeScript)
+AnalyticsProviderV2 → LinkrunnerTrackerV2    ← this package (pure TypeScript)
         │
         ▼
    rn-linkrunner                             ← the SDK (native Kotlin / Swift)
@@ -41,7 +41,7 @@ app open
      └─ setAdditionalData()           CleverTap id, if the module is present
 ```
 
-You do not call `init()` yourself. The tracker runs it inside `initTracker`, which Appbrew invokes on launch via `AnalyticsProvider.trackersInit()`.
+You do not call `init()` yourself. The tracker runs it inside `initTracker`, which Appbrew invokes on launch via `AnalyticsProviderV2.trackersInit()`.
 
 **One `init()` covers both platforms.** Appbrew emits two separate install events, `app_install_android` and `app_install_ios`, but both are **dropped** — `init()` has already recorded the install natively, and forwarding them would double-count. They also fire off a JS-side `has-booted` flag exactly once per install, so they cannot be used to drive `init()` in the first place.
 
@@ -131,14 +131,16 @@ You do **not** need to handle ATT — Appbrew presents the prompt itself in `@ga
 
 ## 4. Register the tracker
 
-In `src/app/App.tsx`:
+In `src/app/App.tsx`, on the same provider as Appbrew's own trackers:
 
 ```typescript
-import { AnalyticsProvider } from '@gauntlet/analytics'
+import { AnalyticsProviderV2 } from '@gauntlet/analytics'
 import { LinkrunnerTrackerV2 } from '@linkrunner/appbrew'
 
-AnalyticsProvider.getInstance().addTracker(new LinkrunnerTrackerV2())
+AnalyticsProviderV2.getInstance().addTracker(new LinkrunnerTrackerV2())
 ```
+
+From gauntlet 0.30, apps register trackers on `AnalyticsProviderV2` and use it as the `analytics` module. `AnalyticsProvider.addTracker` no longer accepts a V2 tracker there. On an older app that still uses `AnalyticsProvider` as its `analytics` module, register on that one instead: a tracker only receives events from the provider the app sends them through.
 
 No token in code — see below.
 
@@ -614,7 +616,7 @@ Reference: [Integration testing](https://docs.linkrunner.io/testing/integration-
 
 ```typescript
 import {
-  LinkrunnerTrackerV2,     // the tracker — register with AnalyticsProvider
+  LinkrunnerTrackerV2,     // the tracker — register with AnalyticsProviderV2
   LinkrunnerTracker,       // alias
 
   // Module-level calls. Delegate to the most recently constructed tracker.
