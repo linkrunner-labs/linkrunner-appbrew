@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   Serializer,
   finiteNumber,
+  jsonArraySetting,
+  jsonObjectSetting,
   nonEmptyString,
   normalizeCustomerId,
   withTimeout,
@@ -159,5 +161,45 @@ describe('optional requires', () => {
     }
 
     expect(offenders).toEqual([])
+  })
+})
+
+describe('jsonObjectSetting', () => {
+  it('parses a JSON string from the settings form', () => {
+    expect(jsonObjectSetting('{"add_to_cart":"AddToCart"}')).toEqual({
+      add_to_cart: 'AddToCart',
+    })
+  })
+
+  it('passes an object through and drops non-string values', () => {
+    expect(jsonObjectSetting({ a: 'b', c: 1 })).toEqual({ a: 'b' })
+  })
+
+  it('returns undefined for invalid JSON, arrays and blanks', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    expect(jsonObjectSetting('{oops')).toBeUndefined()
+    expect(jsonObjectSetting('["a"]')).toBeUndefined()
+    expect(jsonObjectSetting('  ')).toBeUndefined()
+    expect(jsonObjectSetting(undefined)).toBeUndefined()
+  })
+})
+
+describe('jsonArraySetting', () => {
+  it('parses a JSON string from the settings form', () => {
+    expect(jsonArraySetting('["add_to_cart","purchase"]')).toEqual([
+      'add_to_cart',
+      'purchase',
+    ])
+  })
+
+  it('passes an array through and drops non-strings and blanks', () => {
+    expect(jsonArraySetting(['a', '', 2, 'b'])).toEqual(['a', 'b'])
+  })
+
+  it('never treats a plain string as a list of characters', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    expect(jsonArraySetting('add_to_cart')).toBeUndefined()
+    expect(jsonArraySetting('[]')).toBeUndefined()
+    expect(jsonArraySetting({ a: 'b' })).toBeUndefined()
   })
 })

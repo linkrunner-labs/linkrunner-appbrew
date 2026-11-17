@@ -62,10 +62,12 @@ export interface LinkrunnerIntegrationConfig {
    */
   analyticsIdentifiers?: boolean
 
-  eventsMapper?: Record<string, string>
-  paramsMapper?: Record<string, string>
-  eventsWhitelist?: AnalyticsEvent[]
-  paramsWhitelist?: AnalyticsEventParams[]
+  /** An object, or the same object as a JSON string from the settings form. */
+  eventsMapper?: Record<string, string> | string
+  paramsMapper?: Record<string, string> | string
+  /** An array, or the same array as a JSON string from the settings form. */
+  eventsWhitelist?: AnalyticsEvent[] | string
+  paramsWhitelist?: AnalyticsEventParams[] | string
 }
 
 /**

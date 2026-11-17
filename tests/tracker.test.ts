@@ -386,3 +386,34 @@ describe('module-level api', () => {
     })
   })
 })
+
+describe('JSON settings from the form', () => {
+  it('accepts the mappers and whitelists as JSON strings', async () => {
+    const tracker = new LinkrunnerTrackerV2()
+    await tracker.initTracker(
+      withToken({
+        eventsWhitelist: '["add_to_cart"]',
+        paramsWhitelist: '["value"]',
+        eventsMapper: '{"add_to_cart": "AddToCart"}',
+        paramsMapper: '{"value": "amount"}',
+      })
+    )
+
+    expect(tracker.eventsWhitelist).toEqual(['add_to_cart'])
+    expect(tracker.paramsWhitelist).toEqual(['value'])
+    expect(tracker.eventsMapper).toMatchObject({ add_to_cart: 'AddToCart' })
+    expect(tracker.paramsMapper).toEqual({ value: 'amount' })
+  })
+
+  it('keeps the defaults when a value is not valid JSON', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const defaults = new LinkrunnerTrackerV2()
+    const tracker = new LinkrunnerTrackerV2()
+    await tracker.initTracker(
+      withToken({ eventsWhitelist: '[add_to_cart', eventsMapper: 'not json' })
+    )
+
+    expect(tracker.eventsWhitelist).toEqual(defaults.eventsWhitelist)
+    expect(tracker.eventsMapper).toEqual(defaults.eventsMapper)
+  })
+})
