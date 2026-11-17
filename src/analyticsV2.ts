@@ -37,6 +37,8 @@ import type {
 import {
   Serializer,
   finiteNumber,
+  jsonArraySetting,
+  jsonObjectSetting,
   nonEmptyString,
   normalizeCustomerId,
   withTimeout,
@@ -170,16 +172,18 @@ export class LinkrunnerTrackerV2 extends AnalyticsTrackerV2 {
       return
     }
 
-    if (settings.eventsMapper) {
-      this.eventsMapper = { ...DEFAULT_EVENTS_MAPPER, ...settings.eventsMapper }
+    const eventsMapper = jsonObjectSetting(settings.eventsMapper)
+    if (eventsMapper) {
+      this.eventsMapper = { ...DEFAULT_EVENTS_MAPPER, ...eventsMapper }
     }
-    if (settings.paramsMapper) this.paramsMapper = { ...settings.paramsMapper }
-    if (settings.eventsWhitelist?.length) {
-      this.eventsWhitelist = settings.eventsWhitelist
-    }
-    if (settings.paramsWhitelist?.length) {
-      this.paramsWhitelist = settings.paramsWhitelist
-    }
+    const paramsMapper = jsonObjectSetting(settings.paramsMapper)
+    if (paramsMapper) this.paramsMapper = paramsMapper
+    const eventsWhitelist = jsonArraySetting<AnalyticsEvent>(settings.eventsWhitelist)
+    if (eventsWhitelist) this.eventsWhitelist = eventsWhitelist
+    const paramsWhitelist = jsonArraySetting<AnalyticsEventParams>(
+      settings.paramsWhitelist
+    )
+    if (paramsWhitelist) this.paramsWhitelist = paramsWhitelist
 
     const analytics = useAppStore.getState().analytics
     // Synchronous and MMKV-persisted, so stable for the life of the install.

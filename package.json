@@ -1,6 +1,6 @@
 {
   "name": "@linkrunner/appbrew",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Linkrunner attribution for Appbrew apps: installs, in-app events, revenue, deep links and push notification opens.",
   "license": "MIT",
   "author": "Linkrunner <support@linkrunner.io>",
@@ -85,142 +85,157 @@
     "vitest": "^2.1.0"
   },
   "appbrew": {
+    "title": "Linkrunner",
+    "access": "self-serve",
+    "image": "https://linkrunner.io/brand/logos/linkrunner-mark-color.png",
     "configKey": "linkrunner",
     "requiresNativeBuild": true,
     "settings": [
       {
         "key": "token",
         "title": "Linkrunner Project Token",
-        "placeholder": "token",
-        "secret": true,
         "type": "text",
-        "required": true
+        "required": true,
+        "secret": true,
+        "placeholder": "Linkrunner dashboard → Settings → Project Details → Project token"
       },
       {
         "key": "secretKey",
         "title": "Secret Key (SDK signing)",
-        "placeholder": "secretKey",
-        "secret": true,
+        "type": "text",
         "required": false,
-        "type": "text"
+        "secret": true,
+        "placeholder": "Only if SDK signing is on: Linkrunner dashboard → Settings → SDK Signing"
       },
       {
         "key": "keyId",
         "title": "Key ID (SDK signing)",
-        "placeholder": "keyId",
+        "type": "text",
         "required": false,
-        "type": "text"
+        "secret": false,
+        "placeholder": "Only if SDK signing is on: Linkrunner dashboard → Settings → SDK Signing"
       },
       {
         "key": "debug",
-        "title": "Debug Logging",
-        "required": false,
-        "type": "boolean"
+        "title": "Debug Logging (testing only, turn off before release)",
+        "type": "boolean",
+        "required": false
       },
       {
         "key": "disableIdfa",
         "title": "Disable IDFA (iOS)",
-        "required": false,
-        "type": "boolean"
+        "type": "boolean",
+        "required": false
       },
       {
         "key": "enablePIIHashing",
         "title": "Hash PII Before Sending",
-        "required": false,
-        "type": "boolean"
+        "type": "boolean",
+        "required": false
       },
       {
         "key": "trackScreenViews",
         "title": "Forward Screen View Events",
-        "required": false,
-        "type": "boolean"
+        "type": "boolean",
+        "required": false
       },
       {
         "key": "deeplinkRouting",
         "title": "Route Deferred Deep Links",
-        "required": false,
-        "type": "boolean"
+        "type": "boolean",
+        "required": false
       },
       {
         "key": "uninstallTracking",
         "title": "Uninstall Tracking",
-        "required": false,
-        "type": "boolean"
+        "type": "boolean",
+        "required": false
       },
       {
         "key": "pushOpenAttribution",
         "title": "Push Open Attribution",
-        "required": false,
-        "type": "boolean"
+        "type": "boolean",
+        "required": false
       },
       {
         "key": "enableRefunds",
         "title": "Forward Refunds",
-        "required": false,
-        "type": "boolean"
+        "type": "boolean",
+        "required": false
       },
       {
         "key": "consentIsEEA",
         "title": "Google Ads Consent (EEA User)",
-        "placeholder": "granted, denied or unknown",
+        "type": "text",
         "required": false,
-        "type": "text"
+        "secret": false,
+        "placeholder": "granted, denied or unknown. Leave empty if your app has a consent banner"
       },
       {
         "key": "consentAdUserData",
         "title": "Google Ads Consent (Ad User Data)",
-        "placeholder": "granted, denied or unknown",
+        "type": "text",
         "required": false,
-        "type": "text"
+        "secret": false,
+        "placeholder": "granted, denied or unknown. Leave empty if your app has a consent banner"
       },
       {
         "key": "consentAdPersonalization",
         "title": "Google Ads Consent (Ad Personalization)",
-        "placeholder": "granted, denied or unknown",
+        "type": "text",
         "required": false,
-        "type": "text"
+        "secret": false,
+        "placeholder": "granted, denied or unknown. Leave empty if your app has a consent banner"
       },
       {
         "key": "enableTCFConsentCollection",
         "title": "Read TCF Consent From CMP (Android)",
-        "required": false,
-        "type": "boolean"
+        "type": "boolean",
+        "required": false
       },
       {
         "key": "clevertapIntegration",
         "title": "Link CleverTap ID",
-        "required": false,
-        "type": "boolean"
+        "type": "boolean",
+        "required": false
       },
       {
         "key": "analyticsIdentifiers",
         "title": "Attach Firebase Analytics IDs",
-        "required": false,
-        "type": "boolean"
+        "type": "boolean",
+        "required": false
       },
       {
         "key": "eventsMapper",
         "title": "Events Mapper (JSON)",
+        "type": "json",
         "required": false,
-        "type": "text"
+        "secret": false,
+        "placeholder": "{\"add_to_cart\": \"AddToCart\"}. Leave empty to send Appbrew event names as is"
       },
       {
         "key": "paramsMapper",
         "title": "Params Mapper (JSON)",
+        "type": "json",
         "required": false,
-        "type": "text"
+        "secret": false,
+        "placeholder": "{\"value\": \"amount\"}. Leave empty to send Appbrew param names as is"
       },
       {
         "key": "eventsWhitelist",
         "title": "Events Whitelist (JSON array)",
+        "type": "json",
         "required": false,
-        "type": "text"
+        "secret": false,
+        "placeholder": "[\"purchase\", \"add_to_cart\"]. Leave empty to send every event"
       },
       {
         "key": "paramsWhitelist",
         "title": "Params Whitelist (JSON array)",
+        "type": "json",
         "required": false,
-        "type": "text"
+        "secret": false,
+        "placeholder": "[\"value\", \"currency\", \"items\"]. Leave empty to send every param"
       }
     ]
   }

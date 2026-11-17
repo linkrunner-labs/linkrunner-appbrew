@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.3.1
+
+No native change, but the package is `requiresNativeBuild: true`, so merchant
+apps pick it up with their next release.
+
+- **README follows the Appbrew integration template**: machine-readable
+  header, the 11 template sections, a config table that matches
+  `appbrew.settings`, and a test checklist.
+- **`appbrew` manifest for the Studio catalog**: `title`, `access:
+  self-serve` and the Linkrunner logo as `image`. Settings are ordered token,
+  SDK signing keys, debug, then the optional ones, and every text setting has
+  a placeholder that says where the merchant finds the value.
+- **JSON settings work from the form.** `eventsMapper`, `paramsMapper`,
+  `eventsWhitelist` and `paramsWhitelist` are now `json` settings and accept a
+  JSON string or a parsed value. Before, a JSON string from a `text` field was
+  spread character by character. Invalid JSON is ignored with a log line.
+- The README registers the tracker on the provider the app uses as its
+  `analytics` module (`AnalyticsProvider` in current Appbrew apps), instead of
+  always `AnalyticsProviderV2`.
+
 ## 0.3.0
 
 Merchant apps need a release: the `rn-linkrunner` floor moves to a new native

@@ -76,6 +76,33 @@ export function nonEmptyString(value: unknown) {
   return str.length > 0 ? str : undefined
 }
 
+/** Settings form values can arrive as a JSON string or already parsed; anything else is ignored. */
+export function jsonObjectSetting(value: unknown): Record<string, string> | undefined {
+  const parsed = parseJsonSetting(value)
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return undefined
+  const entries = Object.entries(parsed).filter(([, v]) => typeof v === 'string')
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined
+}
+
+export function jsonArraySetting<T = string>(value: unknown): T[] | undefined {
+  const parsed = parseJsonSetting(value)
+  if (!Array.isArray(parsed)) return undefined
+  const items = parsed.filter((v) => typeof v === 'string' && v.length > 0)
+  return items.length > 0 ? (items as T[]) : undefined
+}
+
+function parseJsonSetting(value: unknown): unknown {
+  if (typeof value !== 'string') return value
+  const str = value.trim()
+  if (!str) return undefined
+  try {
+    return JSON.parse(str)
+  } catch {
+    console.warn('[linkrunner/appbrew] ignoring setting that is not valid JSON', str)
+    return undefined
+  }
+}
+
 /**
  * Resolve an optional peer without a hard dependency on it, unwrapping an ES
  * module default export.
